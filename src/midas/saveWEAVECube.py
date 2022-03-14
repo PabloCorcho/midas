@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Feb  5 08:05:09 2022
 
-@author: pablo
-"""
 import yaml
+import os
 from astropy.io import fits
 from datetime import date
-from numpy import array, float32, ones_like
+from numpy import array, float32, ones_like, ones
 
 """
 Example of WEAVE Apertiff collaboration simulated cubes content
@@ -24,86 +21,80 @@ No.    Name      Ver    Type      Cards   Dimensions   Format
   7  BLUE_IVAR_COLLAPSE3    1 ImageHDU        72   (176, 153)   float32   
   
 """
+
 class SaveWEAVECube(object):
+    # Path to cube template files
+    header_templates_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        'cube_templates', 'WEAVE', 'headers')
+    # Number of extension of L1 WEAVE data
+    n_extensions = 8
+    extension_names = ['PRIMARY', '<arm>_DATA', '<arm>_IVAR', '<arm>_DATA_NOSS',
+                       '<arm>_IVAR_NOSS', '<arm>_SENSFUNC', '<arm>_DATA_COLLAPSE3',
+                       '<arm>_IVAR_COLLAPSE3']
+    # Normalization value for flux
+    flux_norm = 1e-18
     def __init__(self, observation, filename):
-        self.basic = None
-        self.observation = observation
+        print('[SAVING] -- *** SAVING OBSERVATION AS WEAVE DATA CUBE ***')
         self.filename = filename
-        self.get_observation_info()
+        self.observation = observation
+        # First it loads the templates used for building the headers of each extensino
+        self.load_header_templates()
+        # Modify some values according to the simulated data
+        self.modify_keyword_values()
+        # Handling data format and arm splitting
+        self.build_extensions()
 
-        self.primary_hdr = None
-        self.data_hdr = None
-        print('[SAVING] -- *** SAVING OBSERVATION ***')
+    def modify_keyword_values(self):
 
-        self.build_primary()
-        self.build_data()
-    def get_observation_info(self):
-        """
-        blah...
-        :return:
-        """
-        # Basic stuff common to both arms
-        description = {
-            'AUTHOR': ('Corcho-Caballero P.', ''),
-            'INTRUME': ('Mock-WEAVE', 'Instrument use for observations'),
-            'BUNIT': ('10^-16 * erg * s^-1 cm^-2 Angstrom^-1', 'flux unit'),
-            'OBJECT': (self.observation.galaxy.name, 'Target object'),
-            'FILENAME': (self.filename, 'File name'),
-            'MED_VEL': (self.observation.instrument.redshift * 3e5,
-                        'systemic velocity km/s'),
-            'RMS_VEL': (0.0, 'rms of systemic velocity (km/s)')}
+        try:
+            self.headers
+        except Exception:
+            raise NameError(' [SAVING] ERROR: HEADER TEMPLATES NOT PROPERLY LOADED')
+        print(' [SAVING] Replacing HEADER values according to simulated data')
+        for arm in self.headers.keys():
+            for extension in self.headers[arm].keys():
+                hdr = self.headers[arm][extension]
+                if 'PROV0000' in hdr.keys():
+                    hdr['PROV0000'] = self.filename
 
-        wcs = {
-            'SIMPLE': ('T', 'file conforms to FITS standard'),
-            'BITPIX': (32, 'number of bits per data pixel'),
-            'NAXIS': (len(self.observation.cube.shape),
-                      'number of data axes'),
-            'NAXIS1': (self.observation.cube.shape[1],
-                       'length of data axis 1'),
-            'NAXIS2': (self.observation.cube.shape[2],
-                       'length of data axis 1'),
-            'NAXIS3': (self.observation.instrument.wavelength_blue.size,
-                       'length of data axis 1'),
-            'EXTEND': ('T', 'FITS dataset may contain extensions'),
-            'ORIG_RA': (0.0, ''),
-            'ORIG_DEC': (0.0, ''),
-            'CRVAL1': (0.0, 'RA at CRPIX1 in deg'),
-            'CRPIX1': (self.observation.cube.shape[1] // 2,
-                       'Ref pixel for WCS'),
-            'CRVAL2': (0.0, 'DEC at CRPIX2 in deg'),
-            'CRPIX2': (self.observation.cube.shape[2] // 2, 'Ref pixel for WCS'),
-            # CRVAL3 must be overwritten by each arm configuration
-            'CRVAL3': (self.observation.instrument.wave_init,
-                       'DEC at CRPIX2 in deg'),
-            'CDELT3': (self.observation.instrument.delta_wave, ''),
-            'CRPIX3': (1.0, 'Ref pixel for WCS'),
-            # 'WCSNAME': ('TELESCOPE', ''), Not necessary when there is only one WCS
-            'CTYPE1': ('RA---TAN', 'Variable measured by the WCS'),
-            'CUNIT1': ('deg', 'Units'),
-            'CTYPE2': ('DEC--TAN', 'Variable measured by the WCS'),
-            'CUNIT2': ('deg', 'Units'),
-            'CTYPE3': ('AWAV', 'Variable measured by the WCS'),
-            'CUNIT3': ('Angstrom', 'Units'),
-            'CD1_1': (-self.observation.instrument.pixel_size.to('deg').value,
-                      'Pixels in degress for X-axis'),
-            'CD1_2': (0.0, ''),
-            'CD1_3': (0.0, ''),
-            'CD2_1': (0.0, ''),
-            'CD2_2': (self.observation.instrument.pixel_size.to('deg').value,
-                      'Pixels in degress for Y-axis'),
-            'CD2_3': (0.0, ''),
-            'CD3_1': (0.0, ''),
-            'CD3_2': (0.0, ''),
-            'CD3_3': (self.observation.instrument.delta_wave,
-                      'Linear dispersion (Angstrom/pixel)'),
-        }
-        self.basic = {'blue': {**wcs.copy(), **description.copy()},
-                      'red': {**wcs.copy(), **description.copy()}}
-        # Fill specific field for each arm
-        self.basic['blue']['NAXIS3'] = self.observation.instrument.wavelength_blue.size
-        self.basic['blue']['CRVAL3'] = self.observation.instrument.wavelength_blue[0].value
-        self.basic['red']['NAXIS3'] = self.observation.instrument.wavelength_red.size
-        self.basic['red']['CRVAL3'] = self.observation.instrument.wavelength_red[0].value
+                # keywords corresponding to the simulation
+                if extension == 'PRIMARY':
+                    hdr['SIMU_DATA'] = ('IllustrisTNG100-1', 'Simulation suite used')
+                    hdr['SIMU_MED_VEL'] = (self.observation.instrument.redshift * 3e5, 'systemic velocity km/s')
+                    hdr['SIMU_OBJID'] = self.observation.galaxy.name
+                    hdr['SIMU_KERNEL'] = (self.observation.kernel.name, 'Kernel used for particle smoothin')
+                    for key in self.observation.kernel.kernel_params.keys():
+                        hdr['SIMU_KER_PARAM_' + key] = (
+                            self.observation.kernel.kernel_params[key],
+                            'Kernel parameter')
+                    hdr['AUTHOR1'] = ('Pablo Corcho-Caballero (UAM/MQ)', '')
+                    hdr['AUTHOR2'] =  ('pablo.corcho@uam.es', 'contact')
+                    hdr['DATE'] = (str(date.today()))
+                # Set WCS parameters
+                if 'CRVAL1' in hdr.keys():
+                    # spatial axes
+                    hdr['NAXIS1'] = (self.observation.cube.shape[1], 'length of data axis 1')
+                    hdr['CRVAL1'] = (0.0, 'RA at CRPIX1 in deg')
+                    hdr['CRPIX1'] = (self.observation.cube.shape[1] // 2, 'Ref pixel for WCS')
+                    hdr['CD1_1'] = (-self.observation.instrument.pixel_size.to('deg').value,
+                                    'Pixels in degress for X-axis')
+                    
+                    if 'CRVAL2' in hdr.keys():
+                        hdr['NAXIS2'] = (self.observation.cube.shape[2], 'length of data axis 2')
+                        hdr['CRVAL2'] = (0.0, 'DEC at CRPIX2 in deg')
+                        hdr['CRPIX2'] = (self.observation.cube.shape[2] // 2, 'Ref pixel for WCS')
+                        hdr['CD2_2'] = (self.observation.instrument.pixel_size.to('deg').value,
+                                        'Pixels in degress for Y-axis')
+                    # spectral axis
+                    if 'CRVAL3' in hdr.keys():
+                        hdr['NAXIS3'] = (self.observation.instrument.wavelength_arms[arm].size, 'length of data axis 2')
+                        hdr['CRVAL3'] = (self.observation.instrument.wave_init, 'DEC at CRPIX2 in deg')
+                        hdr['CRPIX3'] = (1.0, 'Ref pixel for WCS')
+                        hdr['CD3_3'] = (self.observation.instrument.delta_wave,
+                                        'Linear dispersion (Angstrom/pixel)')
+
+                self.headers[arm][extension] = hdr
 
     def create_arms(self, cube):
         """
@@ -112,138 +103,107 @@ class SaveWEAVECube(object):
         """
         blue_cube = cube[self.observation.instrument.wave_blue_pos, :, :]
         red_cube = cube[self.observation.instrument.wave_red_pos, :, :]
-        return blue_cube, red_cube
+        return {'BLUE':blue_cube, 'RED':red_cube}
 
-    def build_primary(self):
-        with open('/home/pablo/WEAVE-Apertiff/input/weave_specifics/'
-                  + 'cube_header/PRIMARY_keys.pkl', 'rb') as f:
-            data_primary = pickle.load(f)
+    def load_header_templates(self):
+        print(' [SAVING] Loading header templates from\n  --> ', self.header_templates_path)
+        self.headers = {}
+        # Iterate over both arms
+        for arm in ['blue', 'red']:
+            print(' --> ARM: ', arm.upper())
+            # Create each extension header
+            self.headers[arm.upper()] = {}
+            for i in range(self.n_extensions):
+                ext_name = self.extension_names[i].replace('<arm>',
+                                                           arm.upper())
+                print('       · EXTENSION: ' + ext_name)
+                hdr_i = fits.Header()
+                file_path = os.path.join(self.header_templates_path,
+                                         arm + '_header_{}.yml'.format(i))
+                with open(file_path) as file:
+                    hdr_template = yaml.safe_load(file)
+                hdr_i = self.map_dict_to_hdr(hdr_template, hdr_i)
+                self.headers[arm.upper()][ext_name] = hdr_i
 
-        basic = {'SIMU': ('IllustrisTNG',
-                          'Simulation suite from which data was taken'),
-                 'ID': (self.observation.galaxy.name,
-                        'Object ID referring to the simulation'),
-                 'AUTHOR1': ('Corcho-Caballero P.', ''),
-                 'AUTHOR2': ('pablo.corcho@uam.es', 'contact'),
-                 'DATE': (str(date.today()))
-                 }
-        kernel_args = {
-                  'KERNEL': (self.observation.kernel.name,
-                             'Kernel used for distributing particles light')}
-        for key in self.observation.kernel.kernel_params.keys():
-            kernel_args['KER_'+key] = (
-                self.observation.kernel.kernel_params[key],
-                'Kernel parameter')
+    def map_dict_to_hdr(self, dict_, hdr_):
+        for key in dict_:
+            if len(dict_[key]) == 1:
+                hdr_[key] = dict_[key][0]
+            elif len(dict_[key]) == 2:
+                # Assumes that the second element corresponds to a comment
+                hdr_[key] = tuple(dict_[key])
+            else:
+                print(key + 'keyword values has length > 2 --> IGNORING')
+        return hdr_
 
-        primary_keys = {**basic, **kernel_args, **data_primary}
-
-        print(' [SAVING] --> Creating HEADER for PRIMARY extension')
-        self.primary_hdr = fits.Header()
-        for key in primary_keys.keys():
-            try:
-                self.primary_hdr[key] = primary_keys[key]
-            except:
-                self.primary_hdr[key] = ''
-        print(self.primary_hdr)
-        print(' [SAVING] --> Creating PRIMARY HDU extension')
-        self.primary_hdu = fits.PrimaryHDU(header=self.primary_hdr)
-
-    def build_data(self):
-        print(' [SAVING] --> Creating DATA extensions')
+    def build_extensions(self):
+        print(' [SAVING] --> Creating HDU data extensions')
         # Fill the headers with the standard information
-        with open('/home/pablo/WEAVE-Apertiff/input/weave_specifics/'
-                  + 'cube_header/BLUE_DATA_keys.pkl', 'rb') as f:
-            blue_data_keys = pickle.load(f)
-        with open('/home/pablo/WEAVE-Apertiff/input/weave_specifics/'
-                  + 'cube_header/RED_DATA_keys.pkl', 'rb') as f:
-            red_data_keys = pickle.load(f)
-        # Include the observation information
-        blue_data_keys = {**blue_data_keys, **self.basic['blue']}
-        red_data_keys = {**red_data_keys, **self.basic['red']}
-        # Create fits header and fill with values
-        blue_header, red_header = fits.Header(), fits.Header()
-        for blue_key in blue_data_keys:
-            try:
-                blue_header[blue_key] = blue_data_keys[blue_key]
-            except:
-                print(blue_key, ' key failed')
-        for red_key in red_data_keys:
-            try:
-                red_header[red_key] = red_data_keys[red_key]
-            except Exception:
-                print(red_key, ' key failed')
-        blue_ivar_header = blue_header.copy()
-        blue_ivar_header['BUNIT'] = ('1/(10^-32 * erg * s^-1 cm^-2 Angstrom^-1)', 'ivar unit')
-        red_ivar_header = red_header.copy()
-        red_ivar_header['BUNIT'] = ('1/(10^-32 * erg * s^-1 cm^-2 Angstrom^-1)', 'ivar unit')
-        # Get the data for red and blue arms separately
-        blue_cube_data, red_cube_data = self.create_arms(
-            self.observation.cube)
-        blue_cube_variance, red_cube_variance = self.create_arms(
-            self.observation.cube_variance)
-        # Create HDU images
-        blue_data = fits.ImageHDU(array(blue_cube_data / 1e-16,
-                                        dtype=float32), name='BLUE_DATA',
-                                  header=blue_header)
-        blue_ivar = fits.ImageHDU(array(1e-32 / blue_cube_variance,
-                                        dtype=float32),
-                                  name='BLUE_IVAR', header=blue_header)
+        try:
+            self.headers
+        except Exception:
+            raise NameError(' [SAVING] ERROR: HEADER TEMPLATES NOT PROPERLY LOADED')
+        print(' [SAVING] Replacing HEADER values according to simulated data')
+        for arm in self.headers.keys():
+            hdu_image_list = []
+            for extension in self.headers[arm].keys():
+                hdr = self.headers[arm][extension]
+                if extension == 'PRIMARY':
+                    hdu_image_list.append(fits.PrimaryHDU(header=hdr));
+                elif extension == arm + '_DATA':
+                    arm_data = self.create_arms(self.observation.cube)[arm]
+                    arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_IVAR':
+                    arm_data = self.create_arms(self.observation.cube_variance)[arm]
+                    arm_data = array(self.flux_norm**2 / arm_data, dtype=float32)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_DATA_NOSS':
+                    try:
+                        self.observation.sky
+                        arm_data = self.create_arms(self.observation.cube + self.observation.sky)[arm]
+                        arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                        hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    except Exception:
+                        print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
+                              + ' extension data will be empty')
+                        hdu = fits.ImageHDU()
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_IVAR_NOSS':
+                    if self.observation.sky is not None:
+                        arm_data = self.create_arms(self.observation.cube_variance
+                                                    + self.observation.sky**2)[arm] / self.flux_norm**2
+                        arm_data = array(1/arm_data, dtype=float32)
+                        hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    else:
+                        print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
+                              + ' extension data will be empty')
+                        hdu = fits.ImageHDU()
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_DATA_COLLAPSE3':
+                    arm_data = self.create_arms(self.observation.cube)[arm]
+                    arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                    arm_data = arm_data.sum(axis=0)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_IVAR_COLLAPSE3':
+                    arm_data = self.create_arms(self.observation.cube_variance)[arm]
+                    arm_data = array(self.flux_norm ** 2 / arm_data, dtype=float32)
+                    arm_data = arm_data.sum(axis=0)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    hdu_image_list.append(hdu)
+                elif extension == arm + '_SENSFUNC':
+                    arm_data = ones(self.observation.instrument.wavelength_arms[arm].size, dtype=float32)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    hdu_image_list.append(hdu)
 
-        red_data = fits.ImageHDU(array(red_cube_data / 1e-16, dtype=float32),
-                                 name='RED_DATA', header=red_header)
-        red_ivar = fits.ImageHDU(array(1e-32 / red_cube_variance, dtype=float32),
-                                 name='RED_IVAR',
-                                 header=red_ivar_header)
-
-        # Create collapsed images and remove unnecessary entries -------------------------------------------------------
-        blue_collapsed_hdr = blue_header.copy()
-        red_collapsed_hdr = red_header.copy()
-        blue_collapsed_ivar_hdr = blue_ivar_header.copy()
-        red_collapsed_ivar_hdr = red_ivar_header.copy()
-        # Anything related to the spectral axis is removed
-        del blue_collapsed_hdr['*3']
-        del red_collapsed_hdr['*3']
-        del blue_collapsed_ivar_hdr['*3']
-        del red_collapsed_ivar_hdr['*3']
-        # Collapsed HDU images
-        blue_data_collapsed = fits.ImageHDU(array(blue_cube_data.sum(axis=0) / 1e-16, dtype=float32),
-                                            name='BLUE_DATA_COLLAPSE3', header=blue_collapsed_hdr)
-        blue_ivar_collapsed = fits.ImageHDU(array(1e32 / blue_cube_variance.sum(axis=0), dtype=float32),
-                                            name='BLUE_IVAR_COLLAPSE3', header=blue_collapsed_ivar_hdr)
-        red_data_collapsed = fits.ImageHDU(array(red_cube_data.sum(axis=0) / 1e-16, dtype=float32),
-                                           name='RED_DATA_COLLAPSE3', header=red_collapsed_hdr)
-        red_ivar_collapsed = fits.ImageHDU(array(1e32 / red_cube_variance.sum(axis=0), dtype=float32),
-                                           name='RED_IVAR_COLLAPSE3', header=red_collapsed_ivar_hdr)
-
-        # Response function for converting ADU's into physical units ---------------------------------------------------
-        with open('/home/pablo/WEAVE-Apertiff/input/weave_specifics/'
-                  + 'cube_header/BLUE_SENSFUNC_keys.pkl', 'rb') as f:
-            blue_sensfunc_keys = pickle.load(f)
-        with open('/home/pablo/WEAVE-Apertiff/input/weave_specifics/'
-                  + 'cube_header/RED_SENSFUNC_keys.pkl', 'rb') as f:
-            red_sensfunc_keys = pickle.load(f)
-        blue_sensfunc_hdr, red_sensfunc_hdr = fits.Header(), fits.Header()
-        for key in blue_sensfunc_keys:
-            blue_sensfunc_hdr[key] = blue_sensfunc_keys[key]
-        for key in red_sensfunc_keys:
-            red_sensfunc_hdr[key] = red_sensfunc_keys[key]
-        blue_sensfunc_data = ones_like(self.observation.instrument.wavelength_blue)
-        red_sensfunc_data = ones_like(self.observation.instrument.wavelength_red)
-
-        blue_sensfunc = fits.ImageHDU(array(blue_sensfunc_data, dtype=float32), name='BLUE_SENSFUNC',
-                                      header=blue_sensfunc_hdr)
-        red_sensfunc = fits.ImageHDU(array(red_sensfunc_data, dtype=float32), name='RED_SENSFUNC',
-                                     header=blue_sensfunc_hdr)
-        # Saving cubes
-        self.save_cube(blue_data, blue_ivar, blue_sensfunc, blue_data_collapsed, blue_ivar_collapsed,
-                       self.filename + '_blue')
-        self.save_cube(red_data, red_ivar, red_sensfunc, red_data_collapsed, red_ivar_collapsed,
-                       self.filename + '_red')
-
-    def save_cube(self, data, ivar, sensfunc, collapsed, ivar_collapsed, filename):
-        hdul = fits.HDUList([self.primary_hdu, data, ivar, sensfunc, collapsed])
-        print('[SAVING] --> Saving cube file at {}'.format(filename + '.fits.gz'))
-        hdul.writeto(filename + '.fits.gz', overwrite=True)
-        hdul.close()
+            hdul = fits.HDUList(hdu_image_list)
+            filename = self.filename + "_" + arm + ".fits.gz"
+            print("[SAVING] --> Saving cube file at {}".format(filename))
+            hdul.writeto(filename, overwrite=True)
+            hdul.close()
+            del hdul
 
 # Mr Krtxo.
