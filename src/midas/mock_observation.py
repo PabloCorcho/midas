@@ -12,6 +12,7 @@ from astropy.io import fits
 from scipy.stats import binned_statistic_2d
 from smoothing_kernel import CubicSplineKernel, GaussianKernel
 from pseudoRT_model import RTModel
+import os
 from numpy import (
     array, logspace, linspace, arange, where, zeros, zeros_like, float32, interp,
     newaxis, sqrt, sum, cumsum, diff, mean, median, cross, dot, sin, cos,
@@ -36,7 +37,10 @@ class WEAVE_Instrument(Instrument):
     """
     This class represents the WEAVE LIFU instrument.
     """
-    configfile = 'input/weave_specifics/weave_specifics.yml'
+    configfile = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        'cube_templates', 'WEAVE', 'weave_instrument.yml')
+
     def __init__(self, **kwargs):
         print('-' * 50 + '\n [INSTRUMENT] Initialising instrument: WEAVE LIFU\n' + '-' * 50)
         print('\n [INSTRUMENT] Loading default parameters for WEAVE LIFU\n -- configfile: ' + self.configfile)
@@ -62,6 +66,7 @@ class WEAVE_Instrument(Instrument):
         self.wavelength_edges = arange(self.wave_init - self.delta_wave / 2,
                                        self.wave_end + self.delta_wave / 2,
                                        self.delta_wave) * u.angstrom
+        self.wavelength_arms = {'BLUE': self.wavelength_blue, 'RED': self.wavelength_red}
 
         print('\n  · FoV: ({:.1f}, {:.1f})'.format(self.field_of_view[0], self.field_of_view[1])
               + '\n  · Pixel size: {:.2f}'.format(self.pixel_size)
@@ -320,7 +325,7 @@ class ObserveGalaxy(object):
                 self.velocity_field += vel_z * mass.value * ker
 
                 part_i += 1
-                # if part_i > 1000:
+                # if part_i > 100:
                 #     break
         print(' [Observation] Stellar spectral computed successfully')
         self.cube = self.cube.to(u.erg/u.s/u.angstrom)
