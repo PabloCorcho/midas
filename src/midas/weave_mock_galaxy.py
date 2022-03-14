@@ -31,7 +31,9 @@ filters = [lib[filter_i] for filter_i in ['SDSS_u', 'SDSS_g', 'SDSS_r']]
 #     gal_spin=np.array([38.9171, 70.069, -140.988]),
 #     gal_vel=np.array([457.701, -275.459, -364.912]),
 #     gal_pos=np.array([29338., 1754.63, 73012.9]))
-f = h5py.File('input/simu_data/tng100_subhalo_155.hdf5', 'r')
+f = h5py.File(
+    '/home/pablo/WEAVE-Apertiff/MIDAS/input/simu_data/tng100_subhalo_155.hdf5',
+    'r')
 stars = f['PartType4']
 # gas = f['PartType0']
 galaxy = Galaxy(
@@ -121,8 +123,11 @@ for i in range(cube.shape[1]):
         cube_sigma[:, i, j] = median_sigma
 observation.cube_variance = cube_sigma**2 * (u.erg/u.s/u.cm/u.angstrom)**2
 
-SaveWEAVECube(observation,
-              filename='mock_cubes/galaxy_ID_{}_pypopstar'.format(galaxy.name))
+observation.sky = None
+
+SaveWEAVECube(
+    observation,
+    filename='/home/pablo/WEAVE-Apertiff/mock_cubes/galaxy_ID_{}_pypopstar'.format(galaxy.name))
 
 f.close()
 # %%
