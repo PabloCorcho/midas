@@ -10,7 +10,9 @@ from matplotlib import pyplot as plt
 import h5py
 from FAENA.measurements.photometry import AB_mags
 from pst import SSP
-from mock_observation import WEAVE_Instrument, Galaxy, ObserveGalaxy
+from mock_observation import ObserveGalaxy
+from instrument import WEAVE_Instrument
+from galaxy import Galaxy
 from saveWEAVECube import SaveWEAVECube
 from astropy import units as u
 from astropy.visualization import make_lupton_rgb
@@ -62,7 +64,9 @@ galaxy.proyect_galaxy(galaxy.spin)
 # Create the WEAVE instrument for observing the galaxy
 fov = WEAVE_Instrument(z=0.01)
 # SSP model used for generating stellar spectra
-ssp_model = SSP.PyPopStar(IMF='KRO')
+#ssp_model = SSP.PyPopStar(IMF='KRO')
+ssp_model = SSP.XSL(IMF='Kroupa', ISO='P00')
+
 #ssp_model.cut_models(wl_min=3000 * u.angstrom,
 #                     wl_max=8000 * u.angstrom)
 
