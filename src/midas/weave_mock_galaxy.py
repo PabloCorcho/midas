@@ -41,7 +41,7 @@ galaxy = Galaxy(
     stars=stars,
     gal_spin=np.array([35.9405, 3.75965, 14.0041]),
     gal_vel=np.array([-397.813, -1148.97, 986.941]),
-    gal_pos=np.array([1039.1, 25973.4, 18764.4]))
+    gal_pos=np.array([1039.1, 25973.4, 18764.4]))   
 # Small galaxy
 # f =  h5py.File('tng100_subhalo_180.hdf5', 'r')
 # stars = f['PartType4']

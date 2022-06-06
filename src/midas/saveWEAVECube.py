@@ -60,12 +60,12 @@ class SaveWEAVECube(object):
 
                 # keywords corresponding to the simulation
                 if extension == 'PRIMARY':
-                    hdr['SIMU_DATA'] = ('IllustrisTNG100-1', 'Simulation suite used')
-                    hdr['SIMU_MED_VEL'] = (self.observation.instrument.redshift * 3e5, 'systemic velocity km/s')
-                    hdr['SIMU_OBJID'] = self.observation.galaxy.name
-                    hdr['SIMU_KERNEL'] = (self.observation.kernel.name, 'Kernel used for particle smoothin')
+                    hdr['S_DATA'] = ('IllustrisTNG100-1', 'Simulation suite used')
+                    hdr['S_MED_VEL'] = (self.observation.instrument.redshift * 3e5, 'systemic velocity km/s')
+                    hdr['SIM_OBJID'] = self.observation.galaxy.name
+                    hdr['SIM_KERNEL'] = (self.observation.kernel.name, 'Kernel used for particle smoothin')
                     for key in self.observation.kernel.kernel_params.keys():
-                        hdr['SIMU_KER_PARAM_' + key] = (
+                        hdr['SI_KER_PAR_' + key] = (
                             self.observation.kernel.kernel_params[key],
                             'Kernel parameter')
                     hdr['AUTHOR1'] = ('Pablo Corcho-Caballero (UAM/MQ)', '')
@@ -74,22 +74,22 @@ class SaveWEAVECube(object):
                 # Set WCS parameters
                 if 'CRVAL1' in hdr.keys():
                     # spatial axes
-                    hdr['NAXIS1'] = (self.observation.cube.shape[1], 'length of data axis 1')
-                    hdr['CRVAL1'] = (0.0, 'RA at CRPIX1 in deg')
-                    hdr['CRPIX1'] = (self.observation.cube.shape[1] // 2, 'Ref pixel for WCS')
+                    hdr['NAXIS1'] = (self.observation.cube.shape[2], 'length of data axis 1')
+                    hdr['CRVAL1'] = (30.0, 'RA at CRPIX1 in deg')
+                    hdr['CRPIX1'] = (self.observation.cube.shape[2] // 2, 'Ref pixel for WCS')
                     hdr['CD1_1'] = (-self.observation.instrument.pixel_size.to('deg').value,
                                     'Pixels in degress for X-axis')
                     
                     if 'CRVAL2' in hdr.keys():
-                        hdr['NAXIS2'] = (self.observation.cube.shape[2], 'length of data axis 2')
-                        hdr['CRVAL2'] = (0.0, 'DEC at CRPIX2 in deg')
-                        hdr['CRPIX2'] = (self.observation.cube.shape[2] // 2, 'Ref pixel for WCS')
+                        hdr['NAXIS2'] = (self.observation.cube.shape[1], 'length of data axis 2')
+                        hdr['CRVAL2'] = (30.0, 'DEC at CRPIX2 in deg')
+                        hdr['CRPIX2'] = (self.observation.cube.shape[1] // 2, 'Ref pixel for WCS')
                         hdr['CD2_2'] = (self.observation.instrument.pixel_size.to('deg').value,
                                         'Pixels in degress for Y-axis')
                     # spectral axis
                     if 'CRVAL3' in hdr.keys():
-                        hdr['NAXIS3'] = (self.observation.instrument.wavelength_arms[arm].size, 'length of data axis 2')
-                        hdr['CRVAL3'] = (self.observation.instrument.wave_init, 'DEC at CRPIX2 in deg')
+                        hdr['NAXIS3'] = (self.observation.instrument.wavelength_arms[arm].size, 'length of data axis 3')
+                        hdr['CRVAL3'] = (self.observation.instrument.wavelength_arms[arm][0].value, 'DEC at CRPIX2 in deg')
                         hdr['CRPIX3'] = (1.0, 'Ref pixel for WCS')
                         hdr['CD3_3'] = (self.observation.instrument.delta_wave,
                                         'Linear dispersion (Angstrom/pixel)')
@@ -169,7 +169,7 @@ class SaveWEAVECube(object):
                     except Exception:
                         print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
                               + ' extension data will be empty')
-                        hdu = fits.ImageHDU()
+                        hdu = fits.ImageHDU(name=extension)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_IVAR_NOSS':
                     if self.observation.sky is not None:
@@ -180,7 +180,7 @@ class SaveWEAVECube(object):
                     else:
                         print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
                               + ' extension data will be empty')
-                        hdu = fits.ImageHDU()
+                        hdu = fits.ImageHDU(name=extension)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_DATA_COLLAPSE3':
                     arm_data = self.create_arms(self.observation.cube)[arm]

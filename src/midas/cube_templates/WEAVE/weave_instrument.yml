@@ -6,7 +6,7 @@ delta_wave: 0.5
 lambda_init: 3676.0
 lambda_end: 9594.5
 # Blue and red limits
-blue_npix: 4825 
+blue_npix: 4825
 red_npix: 7645
 # Pixel spatial size in arcsecs
-pixel_size: 1.0
+pixel_size: 0.5
