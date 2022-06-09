@@ -6,17 +6,11 @@ Created on Wed Dec  8 13:20:54 2021
 @author: pablo
 """
 from astropy import units as u
-from scipy.stats import binned_statistic_2d
 from smoothing_kernel import CubicSplineKernel, GaussianKernel
 from pseudoRT_model import RTModel
-from ppxf.ppxf_util import log_rebin, gaussian_filter1d
-import os
+from ppxf.ppxf_util import gaussian_filter1d
 import numpy as np
-from numpy import (
-    array, logspace, linspace, arange, where, zeros, zeros_like, float32, interp,
-    newaxis, sqrt, sum, cumsum, diff, mean, median, cross, dot, sin, cos,
-    arccos, meshgrid, clip, linalg, pi, random, savetxt)
-import yaml
+from numpy import zeros, zeros_like, interp, newaxis, sqrt, cumsum, diff, meshgrid, clip, pi, random
 import cosmology
 
 class ObserveGalaxy(object):
@@ -88,11 +82,7 @@ class ObserveGalaxy(object):
                 x_pos, y_pos, z_pos = (
                     self.galaxy.stars['ProjCoordinates'][:, part_i])
                 # SSP SED
-                z_idx = ssp_metallicities.searchsorted(metals)
-                z_idx = clip(z_idx, 0, ssp_metallicities.size - 1)
-                age_idx = ssp_ages.searchsorted(age.to('yr'))
-                age_idx = clip(age_idx, 0, ssp_ages.size - 1)
-                sed = self.SSP.L_lambda[z_idx, age_idx].flux.copy()
+                sed = self.SSP.compute_burstSED(age, metals)
                 sed *= mass
                 # Dust extinction
                 # NH, Z = self.rtmodel.compute_nh_column_density(
@@ -127,7 +117,7 @@ class ObserveGalaxy(object):
                 #     sed_extinction[:, newaxis, newaxis].value
                 #     * ker[newaxis, :, :]) * sed.unit
                 # Star formation History and Stellar Kinematics map
-                self.star_formation_history[:, :, age_idx] += mass * ker
+                #self.star_formation_history[:, :, age_idx] += mass * ker
                 self.velocity_field += vel_z * mass.value * ker
 
                 part_i += 1

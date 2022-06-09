@@ -97,7 +97,6 @@ rgb = make_lupton_rgb(red_flux.T/1e-16, green_flux.T/1e-16,
                       Q=10, stretch=0.5,
                       filename='RGB_galaxy_ID_{}_pypopstar.jpeg'.format(
                           galaxy.name))
-plt.imshow(rgb, origin='lower')
 # %%
 # PHOTOMETRY AND NOISE ESTIMATION
 stacked_spectra = cube.reshape(cube.shape[0],
@@ -119,8 +118,9 @@ r_mag = _r[:, 2].reshape(cube.shape[1], cube.shape[2])
 # %%
 limit = (g_mag > 23.75) & (g_mag < 24.25)
 flux_limit_SN_10 = np.nanmedian(g_flux[limit])
-sigma_limit = flux_limit_SN_10 / 10
-median_sigma = np.nanmedian(cube[:, limit] / 10, axis=(1))
+sn_24 = 2
+sigma_limit = flux_limit_SN_10 / sn_24
+median_sigma = np.nanmedian(cube[:, limit] / sn_24, axis=(1))
 cube_sigma = np.zeros_like(cube)
 for i in range(cube.shape[1]):
     for j in range(cube.shape[2]):
@@ -137,59 +137,30 @@ f.close()
 # %%
 # PLOTS
 
-fig = plt.figure(figsize=(17, 8))
-ax = fig.add_subplot(241)
+fig = plt.figure(figsize=(16, 6))
+ax = fig.add_subplot(141)
 mappable = ax.imshow(u_mag, vmax=24, cmap='gray', aspect='auto',
                      origin='lower')
 plt.colorbar(mappable, label=r'$\mu_u$', ax=ax, orientation='horizontal')
 CS = ax.contour(u_flux / sigma_limit, levels=[3, 30, 100],
                 colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
 ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(242)
+ax = fig.add_subplot(142)
 mappable = ax.imshow(g_mag, vmax=24, cmap='gray', aspect='auto',
                      origin='lower')
 plt.colorbar(mappable, label=r'$\mu_g$', ax=ax, orientation='horizontal')
 CS = ax.contour(g_flux / sigma_limit, levels=[3, 30, 100],
                 colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
 ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(243)
+ax = fig.add_subplot(143)
 mappable = ax.imshow(r_mag, vmax=24, cmap='gray', aspect='auto',
                      origin='lower')
 plt.colorbar(mappable, label=r'$\mu_r$', ax=ax, orientation='horizontal')
 CS = ax.contour(r_flux / sigma_limit, levels=[3, 30, 100],
                 colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
 ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(244)
+ax = fig.add_subplot(144)
 mappable = ax.imshow(g_mag - r_mag, vmin=0.2, vmax=.7, aspect='auto',
-                     origin='lower', cmap='jet',)
-plt.colorbar(mappable, label=r'$g - r$', ax=ax, orientation='horizontal')
-CS = ax.contour(g_mag, levels=[24],
-                colors=['k'], alpha=1)
-ax.clabel(CS, inline=1, fontsize=10)
-
-ax = fig.add_subplot(245)
-mappable = ax.imshow(u_mag_d, vmax=24, cmap='gray', aspect='auto',
-                     origin='lower')
-plt.colorbar(mappable, label=r'$\mu_u$', ax=ax, orientation='horizontal')
-CS = ax.contour(u_flux_d / sigma_limit_d, levels=[3, 30, 100],
-                colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
-ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(246)
-mappable = ax.imshow(g_mag_d, vmax=24, cmap='gray', aspect='auto',
-                     origin='lower')
-plt.colorbar(mappable, label=r'$\mu_g$', ax=ax, orientation='horizontal')
-CS = ax.contour(g_flux_d / sigma_limit_d, levels=[3, 30, 100],
-                colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
-ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(247)
-mappable = ax.imshow(r_mag_d, vmax=24, cmap='gray', aspect='auto',
-                     origin='lower')
-plt.colorbar(mappable, label=r'$\mu_r$', ax=ax, orientation='horizontal')
-CS = ax.contour(r_flux_d / sigma_limit_d, levels=[3, 30, 100],
-                colors=['r', 'limegreen', 'deepskyblue'], alpha=1)
-ax.clabel(CS, inline=1, fontsize=10)
-ax = fig.add_subplot(248)
-mappable = ax.imshow(g_mag_d - r_mag_d, vmin=0.2, vmax=.7, aspect='auto',
                      origin='lower', cmap='jet',)
 plt.colorbar(mappable, label=r'$g - r$', ax=ax, orientation='horizontal')
 CS = ax.contour(g_mag, levels=[24],
@@ -211,32 +182,6 @@ np.mean_age, xedges, yedges, _ = binned_statistic_2d(
     bins=50)
 xbin = (xedges[:-1] + xedges[1:]) / 2
 ybin = (yedges[:-1] + yedges[1:]) / 2
-
-plt.figure()
-plt.scatter(galaxy.gas['ProjCoordinates'][0, :],
-            galaxy.gas['ProjCoordinates'][1, :], s=1, alpha=0.1,
-            # c=log10(galaxy.stars['Masses'] * 1e10 / 0.7),
-            c='k'
-            # cmap='jet'
-            )
-plt.xlim(-15, 15)
-plt.ylim(-15, 15)
-
-plt.figure()
-plt.scatter(galaxy.stars['ProjCoordinates'][0, :],
-            galaxy.stars['ProjCoordinates'][1, :], s=1, alpha=0.1,
-            # c=log10(galaxy.stars['Masses'] * 1e10 / 0.7),
-            c='k'
-            # cmap='jet'
-            )
-plt.xlim(-15, 15)
-plt.ylim(-15, 15)
-# plt.imshow(stat, extent=(xbin[0], xbin[-1], ybin[0], ybin[-1]),
-#            origin='lower', cmap='seismic', vmax=150, vmin=-150)
-# plt.colorbar()
-plt.contour(xbin, ybin, stat.T, cmap='seismic',
-            levels=[-100, -50, -30, -10, 0, 10, 30, 50, 100])
-plt.colorbar()
 
 # %%
 fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(12, 4), sharex=True,
@@ -271,7 +216,7 @@ ax.add_patch(rect)
 ax.legend()
 ax = axs[1]
 mappable = ax.contourf(xbin, ybin, stat.T, cmap='seismic', 
-            levels=linspace(-150, 150, 50))
+            levels=np.linspace(-150, 150, 50))
 rect = plt.Rectangle((observation.instrument.det_x_bins_kpc[0],
                 observation.instrument.det_y_bins_kpc[0]),
               observation.instrument.det_x_bins_kpc[-1] - observation.instrument.det_x_bins_kpc[0],
