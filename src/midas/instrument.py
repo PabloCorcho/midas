@@ -8,8 +8,12 @@ import cosmology
 class Instrument(object):
     pass
 
+class IFU(Instrument):
+    spectral_axis = True
+    spatial_axis = True
 
-class WEAVE_Instrument(Instrument):
+
+class WEAVE_Instrument(IFU):
     """
     This class represents the WEAVE LIFU instrument.
     """

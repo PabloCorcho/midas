@@ -13,25 +13,17 @@ import numpy as np
 from numpy import zeros, zeros_like, interp, newaxis, sqrt, cumsum, diff, meshgrid, clip, pi, random
 import cosmology
 
-class ObserveGalaxy(object):
+class Observation(object):
     """todo."""
 
     def __init__(self, SSP, Instrument, Galaxy, kernel_args=None):
         print('-' * 50 + '\n [OBSERVATION]  Initialising observation\n'
               + '-' * 50)
-        # Simple Stellar Populations Model for generating synthetic SEDs
-        self.SSP = SSP
         # Instrument that will observe the galaxy
         self.instrument = Instrument
-
-        # Interpolate SSP models to Instrumental resolution
-        print(' [Observation]  Interpolating SSP models to instrumental resolution')
-        self.SSP.cut_models(self.instrument.wavelength_edges.min() * .9, self.instrument.wavelength_edges.max() * 1.1)
-        self.lsf_sigma = np.interp(self.SSP.wavelength.value, self.instrument.wl_lsf, self.instrument.lsf)
-        self.SSP.convolve_sed(profile=gaussian_filter1d,
-                              **dict(sig=self.lsf_sigma / np.median(np.diff(self.SSP.wavelength.value))))
-        self.SSP.interpolate_sed(self.instrument.wavelength_edges)
-
+        # Simple Stellar Populations Model for generating synthetic SEDs
+        self.SSP = SSP
+        self.prepare_SSP()
         # Galaxy to be observed
         self.galaxy = Galaxy
         # Synthetic cube
@@ -46,6 +38,15 @@ class ObserveGalaxy(object):
                                           self.instrument.det_y_bins_kpc)
         # self.kernel = CubicSplineKernel(dim=2, h=.5)
         self.kernel = GaussianKernel(mean=0, sigma=.3)
+
+    def prepare_SSP(self):
+        """Interpolate SSP models to Instrumental resolution and apply LSF convolution."""
+        print(' [Observation]  Interpolating SSP models to instrumental resolution')
+        self.SSP.cut_models(self.instrument.wavelength_edges.min() * .9, self.instrument.wavelength_edges.max() * 1.1)
+        lsf_sigma = np.interp(self.SSP.wavelength.value, self.instrument.wl_lsf, self.instrument.lsf)
+        self.SSP.convolve_sed(profile=gaussian_filter1d,
+                              **dict(sig=lsf_sigma / np.median(np.diff(self.SSP.wavelength.value))))
+        self.SSP.interpolate_sed(self.instrument.wavelength_edges)
 
     def compute_los_emission(self, stellar=True, nebular=False,
                              dust_extinction=None, kinematics=False):
@@ -139,11 +140,8 @@ class ObserveGalaxy(object):
         self.cube = self.cube / (4 * pi * L_dist**2)
         self.cube_extinction = self.cube_extinction / (4 * pi * L_dist**2)
 
-    def add_noise(self):
+    def add_noise(self, Noise):
         """todo."""
-        self.noise = (2*random.rand(self.cube.size)-1).reshape(
-            self.cube.shape
-            ) * 1e-17 * (u.erg/u.s/u.angstrom)
-        self.cube += self.noise
+        pass
 
 # Mr Krtxo

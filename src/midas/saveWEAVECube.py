@@ -5,7 +5,7 @@ import yaml
 import os
 from astropy.io import fits
 from datetime import date
-from numpy import array, float32, ones_like, ones
+import numpy as np
 
 """
 Example of WEAVE Apertiff collaboration simulated cubes content
@@ -33,12 +33,21 @@ class SaveWEAVECube(object):
                        '<arm>_IVAR_NOSS', '<arm>_SENSFUNC', '<arm>_DATA_COLLAPSE3',
                        '<arm>_IVAR_COLLAPSE3']
     # Normalization value for flux
-    flux_norm = 1e-18
-    def __init__(self, observation, filename):
+    def __init__(self, observation, filename, funit=1, data_size=np.float128):
+        """
+        observation: (object)
+        filename: filename prefix for each cube
+        funit: Normalizing flux unit (erg/s/cm^2/arcsec^2). This corresponds to the inverse value used in PyAPS.
+        data_size: # TODO
+        """
         print('[SAVING] -- *** SAVING OBSERVATION AS WEAVE DATA CUBE ***')
         self.filename = filename
         self.observation = observation
-        # First it loads the templates used for building the headers of each extensino
+        self.funit = funit
+        self.data_size = data_size
+        print('[SAVING] · funit: {}'.format(funit))
+        print('[SAVING] · data_size: {}'.format(self.data_size))
+        # First it loads the templates used for building the headers of each extension
         self.load_header_templates()
         # Modify some values according to the simulated data
         self.modify_keyword_values()
@@ -149,22 +158,22 @@ class SaveWEAVECube(object):
             for extension in self.headers[arm].keys():
                 hdr = self.headers[arm][extension]
                 if extension == 'PRIMARY':
-                    hdu_image_list.append(fits.PrimaryHDU(header=hdr));
+                    hdu_image_list.append(fits.PrimaryHDU(header=hdr))
                 elif extension == arm + '_DATA':
                     arm_data = self.create_arms(self.observation.cube)[arm]
-                    arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                    arm_data = np.array(arm_data / self.funit, dtype=self.data_size)
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_IVAR':
                     arm_data = self.create_arms(self.observation.cube_variance)[arm]
-                    arm_data = array(self.flux_norm**2 / arm_data, dtype=float32)
+                    arm_data =np.array(self.funit**2 / arm_data, dtype=self.data_size)
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_DATA_NOSS':
                     try:
                         self.observation.sky
                         arm_data = self.create_arms(self.observation.cube + self.observation.sky)[arm]
-                        arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                        arm_data = np.array(arm_data / self.funit, dtype=self.data_size)
                         hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     except Exception:
                         print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
@@ -174,8 +183,8 @@ class SaveWEAVECube(object):
                 elif extension == arm + '_IVAR_NOSS':
                     if self.observation.sky is not None:
                         arm_data = self.create_arms(self.observation.cube_variance
-                                                    + self.observation.sky**2)[arm] / self.flux_norm**2
-                        arm_data = array(1/arm_data, dtype=float32)
+                                                    + self.observation.sky**2)[arm] / self.funit**2
+                        arm_data = np.array(1/arm_data, dtype=self.data_size)
                         hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     else:
                         print(' [SAVING] WARNING: NO SKY MODEL\n   --> ' + extension
@@ -184,18 +193,18 @@ class SaveWEAVECube(object):
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_DATA_COLLAPSE3':
                     arm_data = self.create_arms(self.observation.cube)[arm]
-                    arm_data = array(arm_data / self.flux_norm, dtype=float32)
+                    arm_data = np.array(arm_data / self.funit, dtype=self.data_size)
                     arm_data = arm_data.sum(axis=0)
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_IVAR_COLLAPSE3':
                     arm_data = self.create_arms(self.observation.cube_variance)[arm]
-                    arm_data = array(self.flux_norm ** 2 / arm_data, dtype=float32)
+                    arm_data = np.array(self.funit ** 2 / arm_data, dtype=self.data_size)
                     arm_data = arm_data.sum(axis=0)
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_SENSFUNC':
-                    arm_data = ones(self.observation.instrument.wavelength_arms[arm].size, dtype=float32)
+                    arm_data = np.ones(self.observation.instrument.wavelength_arms[arm].size, dtype=self.data_size)
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
 
@@ -206,4 +215,4 @@ class SaveWEAVECube(object):
             hdul.close()
             del hdul
 
-# Mr Krtxo.
+# Mr Krtxo \(ﾟ▽ﾟ)/
