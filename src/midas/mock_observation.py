@@ -36,8 +36,6 @@ class Observation(object):
         # Smoothing kernel
         self.X_kpc, self.Y_kpc = meshgrid(self.instrument.det_x_bins_kpc,
                                           self.instrument.det_y_bins_kpc)
-        # self.kernel = CubicSplineKernel(dim=2, h=.5)
-        self.kernel = GaussianKernel(mean=0, sigma=.3)
 
     def prepare_SSP(self):
         """Interpolate SSP models to Instrumental resolution and apply LSF convolution."""
@@ -94,7 +92,7 @@ class Observation(object):
                 # Kernel Smoothing
                 r = sqrt((self.X_kpc - x_pos)**2
                          + (self.Y_kpc - y_pos)**2)
-                ker = self.kernel.kernel(r).T
+                ker = self.galaxy.kernel.kernel(r).T
                 # (blue/red)shifting spectra
                 vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
                 redshift = vel_z / 3e5
