@@ -10,8 +10,8 @@ from smoothing_kernel import CubicSplineKernel, GaussianKernel
 from pseudoRT_model import RTModel
 from ppxf.ppxf_util import gaussian_filter1d
 import numpy as np
-from numpy import zeros, zeros_like, interp, newaxis, sqrt, cumsum, diff, meshgrid, clip, pi, random
 import cosmology
+
 
 class Observation(object):
     """todo."""
@@ -27,18 +27,18 @@ class Observation(object):
         # Galaxy to be observed
         self.galaxy = Galaxy
         # Synthetic cube
-        self.cube = zeros((self.instrument.wavelength.size,
-                           self.instrument.det_x_n_bins,
-                           self.instrument.det_y_n_bins
-                           )
-                          ) * (self.SSP.L_lambda[0, 0].unit * u.Msun)
-        self.cube_extinction = zeros_like(self.cube)
-        # Smoothing kernel
-        self.X_kpc, self.Y_kpc = meshgrid(self.instrument.det_x_bins_kpc,
-                                          self.instrument.det_y_bins_kpc)
+        self.cube = np.zeros((self.instrument.wavelength.size,
+                              self.instrument.det_x_n_bins,
+                              self.instrument.det_y_n_bins
+                              )
+                             ) * (self.SSP.L_lambda[0, 0].unit * u.Msun)
+        self.cube_extinction = np.zeros_like(self.cube)
+        # Physical data where all the maps (kinematics, SFH) will be stored
+        self.phys_data = {}
 
     def prepare_SSP(self):
         """Interpolate SSP models to Instrumental resolution and apply LSF convolution."""
+        # This method is extremelly usefull in order to speed up the computation time.
         print(' [Observation]  Interpolating SSP models to instrumental resolution')
         self.SSP.cut_models(self.instrument.wavelength_edges.min() * .9, self.instrument.wavelength_edges.max() * 1.1)
         lsf_sigma = np.interp(self.SSP.wavelength.value, self.instrument.wl_lsf, self.instrument.lsf)
@@ -55,13 +55,15 @@ class Observation(object):
             ssp_wave = self.SSP.wavelength
             n_stellar_part = self.galaxy.stars['Masses'].size
             # Store the stellar masses to provide the SFH
-            self.star_formation_history = zeros((self.cube.shape[1],
-                                                 self.cube.shape[2],
-                                                 ssp_ages.size)) * u.Msun
+            self.phys_data['sfh'] = np.zeros((self.cube.shape[1],
+                                              self.cube.shape[2],
+                                              ssp_ages.size)) * u.Msun
+            self.phys_data['tot_stellar_mass'] = np.zeros((self.cube.shape[1],
+                                                           self.cube.shape[2]))
             # Store stellar kinematics
-            self.velocity_field = zeros((self.cube.shape[1],
-                                         self.cube.shape[2])
-                                        )
+            self.phys_data['stellar_kin'] = np.zeros((self.cube.shape[1],
+                                                      self.cube.shape[2])
+                                                     )
             # Initialise pseudo radiative transfer element
             self.rtmodel = RTModel(wave=ssp_wave,
                                    redshift=self.instrument.redshift,
@@ -73,6 +75,7 @@ class Observation(object):
             while part_i < n_stellar_part:
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
+                # Particle data
                 mass, age, metals = (
                     self.galaxy.stars['GFM_InitialMass'][part_i] * 1e10 * u.Msun,
                     self.galaxy.stars['ages'][part_i] * u.Gyr,
@@ -80,6 +83,7 @@ class Observation(object):
                     )
                 x_pos, y_pos, z_pos = (
                     self.galaxy.stars['ProjCoordinates'][:, part_i])
+                vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
                 # SSP SED
                 sed = self.SSP.compute_burstSED(age, metals)
                 sed *= mass
@@ -89,19 +93,22 @@ class Observation(object):
                 # ext = self.rtmodel.compute_extinction(
                 #     Z_gas=Z, N_hyldrogen=NH)
                 # sed_extinction = sed * ext * u.angstrom / u.angstrom
-                # Kernel Smoothing
-                r = sqrt((self.X_kpc - x_pos)**2
-                         + (self.Y_kpc - y_pos)**2)
+                # Kernel Smoothing matrix
+                r = np.sqrt((self.instrument.X_kpc - x_pos)**2
+                             + (self.instrument.Y_kpc - y_pos)**2)
                 ker = self.galaxy.kernel.kernel(r).T
                 # (blue/red)shifting spectra
-                vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
                 redshift = vel_z / 3e5
                 wave = ssp_wave * (1 + redshift)
+                # Store physical properties
+                self.phys_data['stellar_kin'] += vel_z * mass.value * ker
+                self.phys_data['tot_stellar_mass'] = mass.value * ker
+
                 # Interpolation to instrumental resolution
-                cumulative = cumsum(sed * diff(wave)[0])
-                sed = interp(self.instrument.wavelength_edges, wave,
-                             cumulative)
-                sed = diff(sed) / (self.instrument.delta_wave * u.angstrom)
+                cumulative = np.cumsum(sed * np.diff(wave)[0])
+                sed = np.interp(self.instrument.wavelength_edges, wave,
+                                cumulative)
+                sed = np.diff(sed) / (self.instrument.delta_wave * u.angstrom)
 
                 # cumulative_extinction = cumsum(sed_extinction
                 #                                * diff(wave)[0])
@@ -110,14 +117,11 @@ class Observation(object):
                 # sed_extinction = diff(sed_extinction) / (
                 #     self.instrument.delta_wave * u.angstrom)
                 # Final kernel-weighted contribution to the cube
-                self.cube += (sed[:, newaxis, newaxis].value
-                              * ker[newaxis, :, :]) * sed.unit
+                self.cube += (sed[:, np.newaxis, np.newaxis].value
+                              * ker[np.newaxis, :, :]) * sed.unit
                 # self.cube_extinction += (
                 #     sed_extinction[:, newaxis, newaxis].value
                 #     * ker[newaxis, :, :]) * sed.unit
-                # Star formation History and Stellar Kinematics map
-                #self.star_formation_history[:, :, age_idx] += mass * ker
-                self.velocity_field += vel_z * mass.value * ker
 
                 part_i += 1
                 # if part_i > 100:

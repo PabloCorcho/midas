@@ -101,6 +101,8 @@ class WEAVE_Instrument(IFU):
                                              self.pixel_size_kpc.value)
         self.det_y_bins_kpc = (self.det_y_bin_edges_kpc[:-1]
                                + self.det_y_bin_edges_kpc[1:]) / 2
+        # Create a grid of positions
+        self.X_kpc, self.Y_kpc = np.meshgrid(self.det_x_bins_kpc, self.det_y_bins_kpc)
 
     def get_pixel_physical_size(self):
         """todo."""
