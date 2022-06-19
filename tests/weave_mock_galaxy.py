@@ -10,10 +10,10 @@ from matplotlib import pyplot as plt
 import h5py
 from FAENA.measurements.photometry import AB_mags
 from pst import SSP
-from mock_observation import Observation
-from instrument import WEAVE_Instrument
-from galaxy import Galaxy
-from saveWEAVECube import SaveWEAVECube
+from midas.mock_observation import Observation
+from midas.instrument import WEAVE_Instrument
+from midas.galaxy import Galaxy
+from midas.saveWEAVECube import SaveWEAVECube
 from astropy import units as u
 from astropy.visualization import make_lupton_rgb
 from scipy.stats import binned_statistic_2d
@@ -61,18 +61,27 @@ ssp_model = SSP.XSL(IMF='Kroupa', ISO='P00')
 #                     wl_max=8000 * u.angstrom)
 
 # Perform observation
+# %%
 observation = Observation(SSP=ssp_model, Instrument=fov, Galaxy=galaxy)
 observation.compute_los_emission()
 # %%
 cube = observation.cube.value
 cube_ext = observation.cube_extinction.value
 wave = observation.instrument.wavelength.value
-sfh = observation.star_formation_history
-vel_field = observation.velocity_field
-vel_field /= sfh.sum(axis=2).value
-np.savetxt('galaxy_popstar_sfh',
-        sfh.reshape(sfh.shape[0] * sfh.shape[1], sfh.shape[2]).value)
-np.savetxt('galaxy_popstar_vel_field', vel_field)
+tot_mass_map = observation.phys_data['tot_stellar_mass']
+vel_field = observation.phys_data['stellar_kin_mass_weight']
+
+plt.figure()
+plt.imshow(np.log10(tot_mass_map), vmax=5)
+plt.colorbar()
+
+plt.figure()
+plt.imshow(vel_field, cmap='seismic')
+plt.contour(np.log10(tot_mass_map), levels=[5, 6])
+plt.colorbar()
+
+np.savetxt('/home/pablo/WEAVE-Apertiff/mock_cubes/galaxy_ID_{}_kin'.format(
+            galaxy.name), vel_field)
 # %%
 # RGB IMAGE
 blue_pts = np.where((wave < 5000))[0]
@@ -106,22 +115,26 @@ g_mag = _g[:, 2].reshape(cube.shape[1], cube.shape[2])
 r_flux = _r[:, 0].reshape(cube.shape[1], cube.shape[2])
 r_mag = _r[:, 2].reshape(cube.shape[1], cube.shape[2])
 # %%
-limit = (g_mag > 23.75) & (g_mag < 24.25)
-flux_limit_SN_10 = np.nanmedian(g_flux[limit])
-sn_24 = 2
-sigma_limit = flux_limit_SN_10 / sn_24
-median_sigma = np.nanmedian(cube[:, limit] / sn_24, axis=(1))
-cube_sigma = np.zeros_like(cube)
-for i in range(cube.shape[1]):
-    for j in range(cube.shape[2]):
-        cube_sigma[:, i, j] = median_sigma
-observation.cube_variance = cube_sigma**2 * (u.erg/u.s/u.cm/u.angstrom)**2
+# limit = (g_mag > 23.75) & (g_mag < 24.25)
+# flux_limit_SN_10 = np.nanmedian(g_flux[limit])
+# sn_24 = 5
+# sigma_limit = flux_limit_SN_10 / sn_24
+# median_sigma = np.nanmedian(cube[:, limit] / sn_24, axis=(1))
+# cube_sigma = np.zeros_like(cube)
+# for i in range(cube.shape[1]):
+#     for j in range(cube.shape[2]):
+#         cube_sigma[:, i, j] = median_sigma
+
+# observation.cube_variance = cube_sigma**2 * (u.erg/u.s/u.cm**2/u.angstrom)**2
+
+observation.cube_variance = (observation.cube * 0.01)**2
 
 observation.sky = None
-
+# %%
 SaveWEAVECube(
     observation,
-    filename='/home/pablo/WEAVE-Apertiff/mock_cubes/galaxy_ID_{}_pypopstar'.format(galaxy.name),
+    filename='/home/pablo/WEAVE-Apertiff/mock_cubes/galaxy_ID_{}_xsl'.format(
+        galaxy.name),
     funit=1e-18,
     data_size=np.float32)
 

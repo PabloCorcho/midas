@@ -40,7 +40,7 @@ class CubicSplineKernel(object):
 
 class GaussianKernel(object):
 
-    def __init__(self, mean=0, sigma=1):
+    def __init__(self, mean=0, sigma=1, sigma_trunc=3):
         """
         :type dim: int
             Number of dimensions
@@ -48,16 +48,21 @@ class GaussianKernel(object):
             Characteristic smoothing scale
         """
         print(
-            ' [KERNEL] Initialising Gaussian Kernel\n  · mean={}\n  · sigma={}'
-            .format(mean, sigma))
+            ' [KERNEL] Initialising Gaussian Kernel\n  · mean={}\n  · sigma={}\n  · sigma_trunc={}'
+            .format(mean, sigma, sigma_trunc))
         self.name = '2DGaussianKernel'
         self.mean = mean
         self.sigma = sigma
+        self.sigma_trunc = sigma_trunc
         self.kernel_params = {'sigma': sigma}
 
     def kernel(self, r):
-        W = (np.exp(- 0.5 * (r-self.mean)**2 / self.sigma**2)
+        W = np.zeros(r.shape)
+        E = (r-self.mean)**2 / self.sigma**2
+        in_trunc = E < self.sigma_trunc**2
+        W[in_trunc] = (np.exp(- 0.5 * E[in_trunc])
              / np.sqrt(2*np.pi) / self.sigma)
+        W /= (np.sum(W) + 1e-10)
         return W
 
 

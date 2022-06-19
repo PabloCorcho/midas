@@ -6,11 +6,11 @@ Created on Wed Dec  8 13:20:54 2021
 @author: pablo
 """
 from astropy import units as u
-from smoothing_kernel import CubicSplineKernel, GaussianKernel
-from pseudoRT_model import RTModel
+from .smoothing_kernel import CubicSplineKernel, GaussianKernel
+from .pseudoRT_model import RTModel
 from ppxf.ppxf_util import gaussian_filter1d
 import numpy as np
-import cosmology
+from . import cosmology
 
 
 class Observation(object):
@@ -61,9 +61,10 @@ class Observation(object):
             self.phys_data['tot_stellar_mass'] = np.zeros((self.cube.shape[1],
                                                            self.cube.shape[2]))
             # Store stellar kinematics
-            self.phys_data['stellar_kin'] = np.zeros((self.cube.shape[1],
-                                                      self.cube.shape[2])
-                                                     )
+            self.phys_data['stellar_kin_mass_weight'] = np.zeros(
+                (self.cube.shape[1],
+                 self.cube.shape[2])
+                )
             # Initialise pseudo radiative transfer element
             self.rtmodel = RTModel(wave=ssp_wave,
                                    redshift=self.instrument.redshift,
@@ -73,6 +74,8 @@ class Observation(object):
                   + ' {} star particles'.format(n_stellar_part))
             part_i = 0
             while part_i < n_stellar_part:
+                # if part_i > 50:
+                #    break
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
@@ -101,9 +104,9 @@ class Observation(object):
                 redshift = vel_z / 3e5
                 wave = ssp_wave * (1 + redshift)
                 # Store physical properties
-                self.phys_data['stellar_kin'] += vel_z * mass.value * ker
-                self.phys_data['tot_stellar_mass'] = mass.value * ker
-
+                self.phys_data['stellar_kin_mass_weight'] += (
+                    vel_z * mass.value * ker)
+                self.phys_data['tot_stellar_mass'] += mass.value * ker
                 # Interpolation to instrumental resolution
                 cumulative = np.cumsum(sed * np.diff(wave)[0])
                 sed = np.interp(self.instrument.wavelength_edges, wave,
@@ -126,7 +129,8 @@ class Observation(object):
                 part_i += 1
                 # if part_i > 100:
                 #     break
-        print(' [Observation] Stellar spectral computed successfully')
+        self.phys_data['stellar_kin_mass_weight'] /= (self.phys_data['tot_stellar_mass'])
+        print('\n [Observation] Stellar spectral computed successfully')
         self.cube = self.cube.to(u.erg/u.s/u.angstrom)
         self.cube_extinction = self.cube_extinction.to(u.erg/u.s/u.angstrom)
         # Converting luminosity to observed fluxes
@@ -139,8 +143,8 @@ class Observation(object):
                   self.instrument.redshift))
         L_dist = cosmology.cosmo.luminosity_distance(
             self.instrument.redshift).to(u.cm).value
-        self.cube = self.cube / (4 * pi * L_dist**2)
-        self.cube_extinction = self.cube_extinction / (4 * pi * L_dist**2)
+        self.cube = self.cube / (4 * np.pi * L_dist**2)
+        self.cube_extinction = self.cube_extinction / (4 * np.pi * L_dist**2)
 
     def add_noise(self, Noise):
         """todo."""

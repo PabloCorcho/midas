@@ -72,10 +72,10 @@ class SaveWEAVECube(object):
                     hdr['S_DATA'] = ('IllustrisTNG100-1', 'Simulation suite used')
                     hdr['S_MED_VEL'] = (self.observation.instrument.redshift * 3e5, 'systemic velocity km/s')
                     hdr['SIM_OBJID'] = self.observation.galaxy.name
-                    hdr['SIM_KERNEL'] = (self.observation.kernel.name, 'Kernel used for particle smoothin')
-                    for key in self.observation.kernel.kernel_params.keys():
+                    hdr['SIM_KERNEL'] = (self.observation.galaxy.kernel.name, 'Kernel used for particle smoothin')
+                    for key in self.observation.galaxy.kernel.kernel_params.keys():
                         hdr['SI_KER_PAR_' + key] = (
-                            self.observation.kernel.kernel_params[key],
+                            self.observation.galaxy.kernel.kernel_params[key],
                             'Kernel parameter')
                     hdr['AUTHOR1'] = ('Pablo Corcho-Caballero (UAM/MQ)', '')
                     hdr['AUTHOR2'] =  ('pablo.corcho@uam.es', 'contact')

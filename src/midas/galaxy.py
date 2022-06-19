@@ -1,6 +1,6 @@
 from numpy import array, zeros, interp, newaxis, sqrt, sum, cross, dot, sin, cos, arccos, linalg
-from smoothing_kernel import GaussianKernel
-import cosmology
+from .smoothing_kernel import GaussianKernel
+from . import cosmology
 
 class Galaxy(object):
     """

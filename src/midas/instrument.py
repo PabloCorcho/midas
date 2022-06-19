@@ -3,7 +3,7 @@ from scipy.stats import binned_statistic_2d
 import os
 import numpy as np
 import yaml
-import cosmology
+from . import cosmology
 
 class Instrument(object):
     pass
