@@ -204,8 +204,11 @@ class SaveWEAVECube(object):
                     hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
                     hdu_image_list.append(hdu)
                 elif extension == arm + '_SENSFUNC':
-                    arm_data = np.ones(self.observation.instrument.wavelength_arms[arm].size, dtype=self.data_size)
-                    hdu = fits.ImageHDU(data=arm_data, name=extension, header=hdr)
+                    arm_data = np.ones(
+                        self.observation.instrument.wavelength_arms[arm].size,
+                        dtype=self.data_size)
+                    hdu = fits.ImageHDU(data=arm_data, name=extension,
+                                        header=hdr)
                     hdu_image_list.append(hdu)
 
             hdul = fits.HDUList(hdu_image_list)

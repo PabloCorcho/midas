@@ -92,11 +92,11 @@ class Galaxy(object):
         """
         if orthogonal_vector is None:
             if self.stars_params is not None:
-                self.stars['ProjCoordinates'] = self.stars['Coordinates'].copy()
-                self.stars['ProjVelocities'] = self.stars['Velocities'].copy()
+                self.stars['ProjCoordinates'] = self.stars['Coordinates'].copy().T
+                self.stars['ProjVelocities'] = self.stars['Velocities'].copy().T
             if self.gas_params is not None:
-                self.gas['ProjCoordinates'] = self.gas['Coordinates'].copy()
-                self.gas['ProjVelocities'] = self.gas['Velocities'].copy()
+                self.gas['ProjCoordinates'] = self.gas['Coordinates'].copy().T
+                self.gas['ProjVelocities'] = self.gas['Velocities'].copy().T
             self.proyection_vector = (None, None, None)
         else:
             norm = orthogonal_vector / sqrt(sum(orthogonal_vector**2))

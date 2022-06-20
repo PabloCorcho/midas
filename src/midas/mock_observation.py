@@ -11,7 +11,8 @@ from .pseudoRT_model import RTModel
 from ppxf.ppxf_util import gaussian_filter1d
 import numpy as np
 from . import cosmology
-
+from .utils import fast_vector_norm, fast_interpolation
+import multiprocessing as mp
 
 class Observation(object):
     """todo."""
@@ -28,8 +29,8 @@ class Observation(object):
         self.galaxy = Galaxy
         # Synthetic cube
         self.cube = np.zeros((self.instrument.wavelength.size,
-                              self.instrument.det_x_n_bins,
-                              self.instrument.det_y_n_bins
+                              self.instrument.det_y_n_bins,
+                              self.instrument.det_x_n_bins
                               )
                              ) * (self.SSP.L_lambda[0, 0].unit * u.Msun)
         self.cube_extinction = np.zeros_like(self.cube)
@@ -73,9 +74,10 @@ class Observation(object):
             print(' [Observation] Computing stellar spectra for'
                   + ' {} star particles'.format(n_stellar_part))
             part_i = 0
+            # while loops are faster than for loops, in principle :)
             while part_i < n_stellar_part:
-                # if part_i > 50:
-                #    break
+                if part_i > 50:
+                    break
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
@@ -97,9 +99,8 @@ class Observation(object):
                 #     Z_gas=Z, N_hyldrogen=NH)
                 # sed_extinction = sed * ext * u.angstrom / u.angstrom
                 # Kernel Smoothing matrix
-                r = np.sqrt((self.instrument.X_kpc - x_pos)**2
-                             + (self.instrument.Y_kpc - y_pos)**2)
-                ker = self.galaxy.kernel.kernel(r).T
+                r = fast_vector_norm(self.instrument.X_kpc - x_pos, self.instrument.Y_kpc - y_pos)
+                ker = self.galaxy.kernel.kernel(r, **self.galaxy.kernel.kernel_params)
                 # (blue/red)shifting spectra
                 redshift = vel_z / 3e5
                 wave = ssp_wave * (1 + redshift)
@@ -108,10 +109,12 @@ class Observation(object):
                     vel_z * mass.value * ker)
                 self.phys_data['tot_stellar_mass'] += mass.value * ker
                 # Interpolation to instrumental resolution
-                cumulative = np.cumsum(sed * np.diff(wave)[0])
-                sed = np.interp(self.instrument.wavelength_edges, wave,
-                                cumulative)
-                sed = np.diff(sed) / (self.instrument.delta_wave * u.angstrom)
+                sed = fast_interpolation(sed, np.diff(wave)[0], wave, self.instrument.wavelength_edges,
+                                         self.instrument.delta_wave * u.angstrom) * sed.unit
+                #cumulative = np.cumsum(sed * np.diff(wave)[0])
+                #sed = np.interp(self.instrument.wavelength_edges, wave,
+                #                cumulative)
+                #sed = np.diff(sed) / (self.instrument.delta_wave * u.angstrom)
 
                 # cumulative_extinction = cumsum(sed_extinction
                 #                                * diff(wave)[0])
@@ -120,8 +123,7 @@ class Observation(object):
                 # sed_extinction = diff(sed_extinction) / (
                 #     self.instrument.delta_wave * u.angstrom)
                 # Final kernel-weighted contribution to the cube
-                self.cube += (sed[:, np.newaxis, np.newaxis].value
-                              * ker[np.newaxis, :, :]) * sed.unit
+                self.cube += sed[:, np.newaxis, np.newaxis] * ker[np.newaxis, :, :]
                 # self.cube_extinction += (
                 #     sed_extinction[:, newaxis, newaxis].value
                 #     * ker[newaxis, :, :]) * sed.unit
@@ -135,6 +137,75 @@ class Observation(object):
         self.cube_extinction = self.cube_extinction.to(u.erg/u.s/u.angstrom)
         # Converting luminosity to observed fluxes
         self.luminosity_to_flux()
+
+    def los_emission(self, nworkers=1):
+        n_stellar_part = self.galaxy.stars['Masses'].size
+        self.phys_data['sfh'] = np.zeros((self.cube.shape[1],
+                                          self.cube.shape[2],
+                                          self.SSP.ages.size)) * u.Msun
+        self.phys_data['tot_stellar_mass'] = np.zeros((self.cube.shape[1],
+                                                       self.cube.shape[2]))
+        # Store stellar kinematics
+        self.phys_data['stellar_kin_mass_weight'] = np.zeros(
+            (self.cube.shape[1],
+             self.cube.shape[2]))
+        # Initialise pseudo radiative transfer element
+        self.rtmodel = RTModel(wave=self.SSP.wavelength,
+                               redshift=self.instrument.redshift,
+                               galaxy=self.galaxy)
+        print(' [Observation] Computing stellar spectra for'
+              + ' {} star particles'.format(n_stellar_part))
+        ######################### MULTIPROCESSING ##################
+        with mp.Pool(processes=nworkers) as pool:
+            pool.apply(self.compute_particle_sed, range(n_stellar_part))
+        #############################################################
+        self.phys_data['stellar_kin_mass_weight'] /= (self.phys_data['tot_stellar_mass'])
+        print('\n [Observation] Stellar spectral computed successfully')
+        self.cube = self.cube.to(u.erg / u.s / u.angstrom)
+        self.cube_extinction = self.cube_extinction.to(u.erg / u.s / u.angstrom)
+        # Converting luminosity to observed fluxes
+        self.luminosity_to_flux()
+
+    def compute_particle_sed(self, idx):
+        """Compute the emission along the LOS."""
+        try:
+            print("\r Particle --> {}".format(idx), end='', flush=True)
+            # Particle data
+            mass, age, metals = (
+                self.galaxy.stars['GFM_InitialMass'][idx] * 1e10 * u.Msun,
+                self.galaxy.stars['ages'][idx] * u.Gyr,
+                self.galaxy.stars['GFM_Metallicity'][idx]
+            )
+            x_pos, y_pos, z_pos = (
+                self.galaxy.stars['ProjCoordinates'][:, idx])
+            vel_z = self.galaxy.stars['ProjVelocities'][2, idx]
+            # SSP SED
+            sed = self.SSP.compute_burstSED(age, metals)
+            sed *= mass
+            # Dust extinction
+            NH, Z = self.rtmodel.compute_nh_column_density(
+                 x_pos, y_pos, z_pos)
+            ext = self.rtmodel.compute_extinction(
+                     Z_gas=Z, N_hydrogen=NH)
+            sed *= ext * u.angstrom / u.angstrom
+            # Kernel Smoothing matrix
+            r = fast_vector_norm(self.instrument.X_kpc - x_pos, self.instrument.Y_kpc - y_pos)
+            ker = self.galaxy.kernel.kernel(r, **self.galaxy.kernel.kernel_params)
+            # (blue/red)shifting spectra
+            redshift = vel_z / 3e5
+            wave = self.SSP.wavelength * (1 + redshift)
+            # Store physical properties
+            self.phys_data['stellar_kin_mass_weight'] += (
+                    vel_z * mass.value * ker)
+            self.phys_data['tot_stellar_mass'] += mass.value * ker
+            # Interpolation to instrumental resolution
+            sed = fast_interpolation(sed, np.diff(wave)[0], wave,
+                                     self.instrument.wavelength_edges,
+                                     self.instrument.delta_wave * u.angstrom) * sed.unit
+            # Final kernel-weighted contribution to the cube
+            self.cube += sed[:, np.newaxis, np.newaxis] * ker[np.newaxis, :, :]
+        except Exception:
+            print('something went wrong')
 
     def luminosity_to_flux(self):
         """todo."""
@@ -150,4 +221,4 @@ class Observation(object):
         """todo."""
         pass
 
-# Mr Krtxo
+# Mr Krtxo \(ﾟ▽ﾟ)/

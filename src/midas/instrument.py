@@ -125,3 +125,5 @@ class WEAVE_Instrument(IFU):
             (self.binnumb[1, :] == self.det_y_n_bins + 1))[0]
         self.binnumb[0, x_out] = 0
         self.binnumb[1, y_out] = 0
+
+# Mr Krtxo \(ﾟ▽ﾟ)/
