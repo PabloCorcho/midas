@@ -60,11 +60,11 @@ class GaussianKernel(object):
     @staticmethod
     @njit
     def kernel(r, sigma, mean=0, sigma_trunc=3):
-        w = np.zeros(r.shape)
+        w = np.zeros(r.shape, dtype=np.float32)
         e = (r-mean)**2 / sigma**2
         in_trunc = np.where(e < sigma_trunc**2)[0]
         w[in_trunc] = (np.exp(- 0.5 * e[in_trunc]) / np.sqrt(2*np.pi) / sigma)
-        w /= (np.sum(w) + 1e-10)
+        w /= (np.sum(w[in_trunc]) + 1e-10)
         return w
 
 

@@ -7,18 +7,23 @@ Created on Mon Jan 24 09:06:17 2022
 """
 import numpy as np
 from extinction import ccm89
-from scipy.stats import binned_statistic_2d
+from .cosmology import cosmo
 
+# Constants
 H_mass = 1.6735575e-27  # Hydrogen mass in kg
-M_sun = 1.989e30
+M_sun = 1.989e30  # Sun mass in kg
 H_to_Sun = M_sun / H_mass
 kpc_to_cm = 3.086e21
 
+
 class RTModel(object):
     """
-    Refs:
+    Pseudo-radiative transfer model.
+
+    Refs used in the model:
         - Calzetti et al 1994
         https://ui.adsabs.harvard.edu/abs/1994ApJ...429..582C/abstract
+        - Cardelli et al 1989
         - Nelson et al 2018
         https://arxiv.org/pdf/1707.03395.pdf
     """
@@ -28,7 +33,7 @@ class RTModel(object):
         print(' [RT] -- Params:\n    · grid resolution: {} kpc'
               .format(grid_resolution_kpc))
         self.grid_resolution_kpc = grid_resolution_kpc
-        self.wavelength = np.array(wave.to('angstrom').value, dtype=np.float64)
+        self.wavelength = np.array(wave, dtype=np.float64)
         self.redshift = redshift
         self.extinction_curve = ccm89(self.wavelength, a_v=1.0, r_v=3.1)
         # Exponent for dust-to-gas metallicity relation
@@ -36,18 +41,24 @@ class RTModel(object):
         self.gamma[:] = 1.6
         self.gamma[self.wavelength < 2000] = 1.35
 
+        self.N_hydrogen_0 = 2.1e21  # cm^-2
+        self.Z_sun = 0.0127
+
         self.compute_phase_function()
         # Gas particles properties
         if len(galaxy.gas) > 0:
-            self.gas_cells_volume = (galaxy.gas['Masses'] / galaxy.gas['Density']
-                                 ) / 0.7**3  # cKpc^3
+            self.gas_cells_volume = (
+                galaxy.gas['Masses'] / galaxy.gas['Density']
+                ) / (cosmo.H0.value/100)**3  # cKpc^3
             self.gas_met = galaxy.gas['GFM_Metallicity']
             self.gas_pos = galaxy.gas['ProjCoordinates']
             # -- Expressed in 1e10 Msun
             self.gas_mass_hydrogen = (galaxy.gas['GFM_Metals'][:, 0]
-                                  * galaxy.gas['NeutralHydrogenAbundance']
-                                  * galaxy.gas['Masses'])
+                                      * galaxy.gas['NeutralHydrogenAbundance']
+                                      * galaxy.gas['Masses'])
         else:
+            print(
+                ' [RT] · No gas particles to compute extinction were found\n')
             self.gas_cells_volume = np.array([0])
             self.gas_met = np.array([0])
             self.gas_pos = np.array([[0], [0], [0]])
@@ -68,6 +79,7 @@ class RTModel(object):
         self.create_grid()
 
     def compute_phase_function(self):
+        """..."""
         self.albedo = np.zeros_like(self.wavelength)
         y = np.log10(self.wavelength)
         # UV
@@ -87,37 +99,40 @@ class RTModel(object):
             + (1 - self.anisotropy_scatter) * (1 - self.albedo))
 
     def compute_tau_abs(self, Z_gas, N_hydrogen):
-        N_hydrogen_0 = 2.1e21  # cm^-2
-        Z_sun = 0.0127
+        """..."""
         tau_abs = (self.extinction_curve * (1 + self.redshift)**-0.5
-                   * (Z_gas/Z_sun)**self.gamma
-                   * N_hydrogen/N_hydrogen_0)
+                   * (Z_gas/self.Z_sun)**self.gamma
+                   * N_hydrogen/self.N_hydrogen_0)
         return tau_abs
 
     def compute_tau(self, **tau_abs_args):
+        """..."""
         tau_tot = self.compute_tau_abs(**tau_abs_args) * self.phase_function
         return tau_tot
 
     def compute_extinction(self, **tau_abs_args):
+        """..."""
         tau = self.compute_tau(**tau_abs_args)
         if tau.max() == 0:
-            return np.ones_like(self.wavelength)
+            return np.ones_like(self.wavelength), np.zeros_like(self.wavelength)
         else:
             extinction = 1/tau * (1 - np.exp(-tau))
-        return extinction
+            return extinction, tau
 
     def create_grid(self):
+        """..."""
         print(' [RT] --> Creating grid with ({},{}) elements'.format(
             self.x_bin_edges.size, self.y_bin_edges.size))
         self.x_gas_binnumb = np.digitize(self.gas_pos[0, :], self.x_bin_edges,
-                                right=False)
+                                         right=False)
         self.y_gas_binnumb = np.digitize(self.gas_pos[1, :], self.y_bin_edges,
-                                right=False)
-    
+                                         right=False)
+
     def compute_nh_column_density(self, star_x, star_y, star_z):
+        """..."""
         x_bin = np.digitize(star_x, self.x_bin_edges, right=False)
         y_bin = np.digitize(star_y, self.y_bin_edges, right=False)
-        
+
         los_gas_idx = np.where((self.x_gas_binnumb == x_bin)
                                & (self.y_gas_binnumb == y_bin))[0]
 

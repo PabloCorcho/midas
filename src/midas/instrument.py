@@ -42,7 +42,7 @@ class WEAVE_Instrument(IFU):
 
         # Build the wavelenth array
         self.wavelength = np.arange(self.wave_init, self.wave_end,
-                                 self.delta_wave) * u.angstrom
+                                    self.delta_wave) * u.angstrom
         # Wavelenght array for blue and red arms (used for saving each cube separately)
         self.wavelength_blue = np.arange(
             self.wave_init,

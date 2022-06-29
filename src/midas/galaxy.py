@@ -1,6 +1,7 @@
-from numpy import array, zeros, interp, newaxis, sqrt, sum, cross, dot, sin, cos, arccos, linalg
+import numpy as np
 from .smoothing_kernel import GaussianKernel
 from . import cosmology
+from matplotlib import pyplot as plt
 
 class Galaxy(object):
     """
@@ -16,14 +17,14 @@ class Galaxy(object):
     gas_params : dict (optional)
         Dictionary containing all gas properties (position, vel, mass, metallicity, ...)
     gas : dict #TODO
-    position : array (optional)
-        (x, y, z) array vector corresponding to the position of the galaxy in the same frame as the particles.
+    position : np.array (optional)
+        (x, y, z) np.array vector corresponding to the position of the galaxy in the same frame as the particles.
         If not provided, the particles position vector will be assumed to be in the galaxy frame.
     velocity :
-        (v_x, v_y, v_z) array vector corresponding to the velocity of the galaxy in the same frame as the particles.
+        (v_x, v_y, v_z) np.array vector corresponding to the velocity of the galaxy in the same frame as the particles.
         If not provided, all particles will be assumed to be in the galaxy rest frame.
-    spin : array
-        (L_x, L_y, L_z) array vector corresponding to the spin of the galaxy in the same frame as the particles.
+    spin : np.array
+        (L_x, L_y, L_z) np.array vector corresponding to the spin of the galaxy in the same frame as the particles.
         If not provided, all particles will be assumed to be (0, 0, 0).
     kernel : smooth_kernel.KernelObject (optional, default=GaussianKernel(mean=0, sigma=.3)
         Kernel used to smooth the distribution of particles.
@@ -39,20 +40,20 @@ class Galaxy(object):
 
     def __init__(self, kernel=None, **kwargs):
 
-        # Interpolation kernel
-        if kernel is None:
-            self.kernel = GaussianKernel(mean=0, sigma=.3)
-        else:
-            self.kernel = kernel
+        # Interpolation kernel # TODO
+        # if kernel is None:
+        #     self.kernel = GaussianKernel(mean=0, sigma=.3)
+        # else:
+        #     self.kernel = kernel
         # Name of the galaxy
         self.name = kwargs.get('name', "gal")
         self.stars_params = kwargs.get('stars', None)
         self.build_stars()
         self.gas_params = kwargs.get('gas', None)
         self.build_gas()
-        self.spin = kwargs.get('gal_spin', zeros(3))  # kpc/(km/s)
-        self.velocity = kwargs.get('gal_vel', zeros(3))  # km/s
-        self.position = kwargs.get('gal_pos', zeros(3))  # kpc
+        self.spin = kwargs.get('gal_spin', np.zeros(3))  # kpc/(km/s)
+        self.velocity = kwargs.get('gal_vel', np.zeros(3))  # km/s
+        self.position = kwargs.get('gal_pos', np.zeros(3))  # kpc
 
     def build_stars(self):
         """todo."""
@@ -60,10 +61,9 @@ class Galaxy(object):
             for key in list(self.stars_params.keys()):
                 self.stars[key] = self.stars_params[key][()]
         if 'ages' not in self.stars.keys():
-            self.stars['ages'] = interp(
+            self.stars['ages'] = np.interp(
                 self.stars['GFM_StellarFormationTime'],
                 cosmology.scale_f[::-1], cosmology.age_f[::-1])
-
     def build_gas(self):
         """todo."""
         if self.gas_params is not None:
@@ -73,13 +73,13 @@ class Galaxy(object):
     def set_to_galaxy_rest_frame(self):
         """Set the position and velocity of gas and stellar particles to the galaxy rest frame."""
         if self.stars_params is not None:
-            self.stars['Velocities'] += -self.velocity[newaxis, :]
-            self.stars['Coordinates'] += -self.position[newaxis, :]
+            self.stars['Velocities'] += -self.velocity[np.newaxis, :]
+            self.stars['Coordinates'] += -self.position[np.newaxis, :]
         if self.gas_params is not None:
-            self.gas['Velocities'] += -self.velocity[newaxis, :]
-            self.gas['Coordinates'] += -self.position[newaxis, :]
-        self.velocity = zeros(3)
-        self.position = zeros(3)
+            self.gas['Velocities'] += -self.velocity[np.newaxis, :]
+            self.gas['Coordinates'] += -self.position[np.newaxis, :]
+        self.velocity = np.zeros(3)
+        self.position = np.zeros(3)
 
     def proyect_galaxy(self, orthogonal_vector=None):
         """
@@ -87,7 +87,7 @@ class Galaxy(object):
         If no vector is provided, the particles will be projected to the XY plane.
         Arguments
         ---------
-        orthogonal_vector: array (default=(0, 0, 1))
+        orthogonal_vector: np.array (default=(0, 0, 1))
             Orthogonal vector to the projected plane.
         """
         if orthogonal_vector is None:
@@ -99,15 +99,15 @@ class Galaxy(object):
                 self.gas['ProjVelocities'] = self.gas['Velocities'].copy().T
             self.proyection_vector = (None, None, None)
         else:
-            norm = orthogonal_vector / sqrt(sum(orthogonal_vector**2))
+            norm = orthogonal_vector / np.sqrt(sum(orthogonal_vector**2))
             self.proyection_vector = norm
-            b = cross(array([0, 0, 1]), norm)
-            b /= sqrt(sum(b**2))
-            theta = arccos(dot(array([0, 0, 1]), norm))
-            q0, q1, q2, q3 = (cos(theta/2), sin(theta/2)*b[0],
-                              sin(theta/2)*b[1], sin(theta/2)*b[2])
+            b = np.cross(np.array([0, 0, 1]), norm)
+            b /= np.sqrt(sum(b**2))
+            theta = np.arccos(np.dot(np.array([0, 0, 1]), norm))
+            q0, q1, q2, q3 = (np.cos(theta/2), np.sin(theta/2)*b[0],
+                              np.sin(theta/2)*b[1], np.sin(theta/2)*b[2])
             # Quartenion matrix
-            Q = zeros((3, 3))
+            Q = np.zeros((3, 3))
             Q[0, 0] = q0**2 + q1**2 - q2**2 - q3**2
             Q[1, 1] = q0**2 - q1**2 + q2**2 - q3**2
             Q[2, 2] = q0**2 - q1**2 - q2**2 + q3**2
@@ -118,38 +118,67 @@ class Galaxy(object):
             Q[2, 0] = 2*(q1*q3 - q0*q2)
             Q[2, 1] = 2*(q3*q2 + q0*q1)
             # New basis
-            u, v, w = (dot(Q, array([1, 0, 0])),
-                       dot(Q, array([0, 1, 0])),
-                       dot(Q, array([0, 0, 1])))
+            u, v, w = (np.dot(Q, np.array([1, 0, 0])),
+                       np.dot(Q, np.array([0, 1, 0])),
+                       np.dot(Q, np.array([0, 0, 1])))
             # Change of basis matrix
-            W = array([u, v, w])
-            inv_W = linalg.inv(W)
+            W = np.array([u, v, w])
+            inv_W = np.linalg.inv(W)
             if self.stars_params is not None:
-                self.stars['ProjCoordinates'] = array([
-                    sum(self.stars['Coordinates'] * u[newaxis, :], axis=1),
-                    sum(self.stars['Coordinates'] * v[newaxis, :], axis=1),
-                    sum(self.stars['Coordinates'] * w[newaxis, :], axis=1)
+                self.stars['ProjCoordinates'] = np.array([
+                    sum(self.stars['Coordinates'] * u[np.newaxis, :], axis=1),
+                    sum(self.stars['Coordinates'] * v[np.newaxis, :], axis=1),
+                    sum(self.stars['Coordinates'] * w[np.newaxis, :], axis=1)
                     ])
-                self.stars['ProjVelocities'] = array([
-                    sum(self.stars['Velocities'] * inv_W[0, :][newaxis, :],
+                self.stars['ProjVelocities'] = np.array([
+                    sum(self.stars['Velocities'] * inv_W[0, :][np.newaxis, :],
                         axis=1),
-                    sum(self.stars['Velocities'] * inv_W[1, :][newaxis, :],
+                    sum(self.stars['Velocities'] * inv_W[1, :][np.newaxis, :],
                         axis=1),
-                    sum(self.stars['Velocities'] * inv_W[2, :][newaxis, :],
+                    sum(self.stars['Velocities'] * inv_W[2, :][np.newaxis, :],
                         axis=1)
                     ])
             if self.gas_params is not None:
-                self.gas['ProjCoordinates'] = array([
-                    sum(self.gas['Coordinates'] * u[newaxis, :], axis=1),
-                    sum(self.gas['Coordinates'] * v[newaxis, :], axis=1),
-                    sum(self.gas['Coordinates'] * w[newaxis, :], axis=1)
+                self.gas['ProjCoordinates'] = np.array([
+                    sum(self.gas['Coordinates'] * u[np.newaxis, :], axis=1),
+                    sum(self.gas['Coordinates'] * v[np.newaxis, :], axis=1),
+                    sum(self.gas['Coordinates'] * w[np.newaxis, :], axis=1)
                     ])
-                self.gas['ProjVelocities'] = array([
-                    sum(self.gas['Velocities'] * inv_W[0, :][newaxis, :],
+                self.gas['ProjVelocities'] = np.array([
+                    sum(self.gas['Velocities'] * inv_W[0, :][np.newaxis, :],
                         axis=1),
-                    sum(self.gas['Velocities'] * inv_W[1, :][newaxis, :],
+                    sum(self.gas['Velocities'] * inv_W[1, :][np.newaxis, :],
                         axis=1),
-                    sum(self.gas['Velocities'] * inv_W[2, :][newaxis, :],
+                    sum(self.gas['Velocities'] * inv_W[2, :][np.newaxis, :],
                         axis=1)
                     ])
+
+    def get_stellar_map(self, out, stat_val, statistic='sum'):
+        """..."""
+        if statistic == 'sum':
+            for xbin, ybin, val in zip(self.stars['xbin'], self.stars['ybin'],
+                                       stat_val):
+                if (xbin < 0) | (ybin < 0):
+                    continue
+                out[xbin, ybin] += val
+        elif statistic == 'mean':
+            count = np.zeros(out.shape, dtype=int)
+            for xbin, ybin, val in zip(self.stars['xbin'], self.stars['ybin'],
+                                       stat_val):
+                if (xbin < 0) | (ybin < 0):
+                    continue
+                out[xbin, ybin] += val
+                count[xbin, ybin] += 1
+            out = out / count
+        elif statistic == 'std':
+            occupated_bins = np.unique(
+                np.array([self.stars['xbin'], self.stars['ybin']]).T,
+                axis=0)
+            for oc_bin in occupated_bins:
+                mask = (self.stars['xbin'] == oc_bin[0]
+                        ) & (self.stars['ybin'] == oc_bin[1])
+                out[oc_bin[0], oc_bin[1]] = np.std(stat_val[mask])
+        return out
+
+
 # Mr Krtxo \(ﾟ▽ﾟ)/
