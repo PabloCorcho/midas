@@ -6,7 +6,6 @@ Created on Tue Jun 28 15:56:15 2022
 @author: pablo
 """
 
-from astropy.io import fits
 import numpy as np
 from matplotlib import pyplot as plt
 from FAENA.read_cube import MANGACube
@@ -19,7 +18,7 @@ logflux_bins = (logflux_edges[:-1] + logflux_edges[1:]) / 2
 logsnr_edges = np.linspace(-1, 3, 51)
 logsnr_bins = (logsnr_edges[:-1] + logsnr_edges[1:]) / 2
 
-cube_paths = glob('/home/pablo/obs_data/MANGA/cubes/*')
+cube_paths = glob('/Volumes/Elements/MANGA/DR17/cubes/*.gz')
 
 mag_lim = 24  # mag / arcsec**2
 g_band_wl = 4770
@@ -42,6 +41,7 @@ def snr_model(logflux, logflux_0, logsigma_0):
 all_H = np.zeros((len(bands), logflux_bins.size, logsnr_bins.size))
 
 for i, cube_path in enumerate(cube_paths):
+    print(i)
     cube = MANGACube(path=cube_path, abs_path=True)
     cube.get_flux()
     cube.get_wavelength(to_rest_frame=True)
@@ -76,6 +76,44 @@ all_H_cum = np.cumsum(all_H_cond * np.diff(logsnr_edges)[np.newaxis, :],
 logsnr_p50 = logsnr_bins[np.argmin(np.abs(all_H_cum - 0.5), axis=2)]
 n_per_flux = all_H.sum(axis=2)
 
+<<<<<<< HEAD
+    cube.close_cube()
+    if i > 100:
+        break
+
+# %%
+mean_lin_fit = np.poly1d(np.mean(all_p_fit, axis=0))
+mean_cubic_fit = np.poly1d(np.mean(all_p_cubic_fit, axis=0))
+
+all_H_cond = all_H / np.sum(all_H * np.diff(logsnr_edges), axis=1)[:, np.newaxis]
+all_H_cum = np.cumsum(all_H_cond * np.diff(logsnr_edges), axis=1)
+
+plt.figure(figsize=(8, 8))
+plt.contourf(logflux_bins, logsnr_bins, np.log10(all_H.T),
+             vmax=np.log10(all_H.max()), vmin=np.log10(all_H.max()*1e-4))
+plt.colorbar(label=r'$\log_{10}(n_{pix})$')
+plt.contour(logflux_bins, logsnr_bins, all_H_cum.T, levels=[0.16, 0.5, 0.84],
+            linewidths=[1, 2, 1], colors='fuchsia')
+plt.plot(logflux_bins, mean_lin_fit(logflux_bins), ls='--', c='k')
+plt.plot(logflux_bins, mean_cubic_fit(logflux_bins), c='k')
+
+plt.grid()
+plt.ylim(logsnr_edges.min(), logsnr_edges.max())
+plt.xlim(logflux_edges.min(), logflux_edges.max())
+plt.xlabel(r'$\log_{10}(F)$')
+plt.ylabel(r'$\log_{10}(SNR)$')
+plt.savefig('manga_logflux_snr.png', bbox_inches='tight')
+plt.close()
+
+# %%
+plt.figure()
+plt.plot(logflux_bins,
+         10**(mean_lin_fit(logflux_bins) - mean_cubic_fit(logflux_bins)))
+plt.xlabel(r'$\log_{10}(F)$')
+plt.ylabel(r'$\frac{SNR_{lin}}{SNR_{cubic}}$', fontsize=14)
+plt.savefig('manga_snr_ratio.png', bbox_inches='tight')
+plt.close()
+=======
 sigma_p50 = 1 / (np.log(n_per_flux + 1.1))
 # sigma_p50 /= np.min(sigma_p50)
 
@@ -231,3 +269,4 @@ plt.savefig('manga_model_fits.png', bbox_inches='tight')
 logsnr_g_band = snr_model(np.log10(f_lim),
                           np.log10(f0_model(g_band_wl, *f0_popt)),
                           sigma0_model(g_band_wl, *sigma0_popt))
+>>>>>>> d6a4b47f96efe2c1de932aadb1d6606d503b6f91

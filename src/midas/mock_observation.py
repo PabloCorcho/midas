@@ -19,7 +19,8 @@ from .cosmology import cosmo
 class Observation(object):
     """todo."""
 
-    def __init__(self, SSP, Instrument, Galaxy, kernel_args=None):
+    def __init__(self, SSP, Instrument, Galaxy):
+        self.rtmodel = None
         print('-' * 50 + '\n [OBSERVATION]  Initialising observation\n'
               + '-' * 50)
         # Instrument that will observe the galaxy
@@ -35,7 +36,6 @@ class Observation(object):
                               self.instrument.det_y_n_bins
                               )
                              )
-        self.cube_extinction = np.zeros_like(self.cube)
         # Physical data where all the maps (kinematics, SFH) will be stored
 
     def prepare_SSP(self):
@@ -77,7 +77,8 @@ class Observation(object):
                 # Initialise pseudo-radiative transfer module
                 self.rtmodel = RTModel(wave=ssp_wave,
                                        redshift=self.instrument.redshift,
-                                       galaxy=self.galaxy)
+                                       galaxy=self.galaxy,
+                                       grid_resolution_kpc=0.5)
 
             for part_i in range(n_stellar_part):
                 # if part_i > 50:
@@ -138,7 +139,6 @@ class Observation(object):
                 # if part_i > 100:
                 #     break
         print('\n [Observation] LOS emission computed successfully')
-        # self.cube = self.cube.to(u.erg/u.s/u.angstrom)
         # Converting luminosity to observed fluxes
         self.luminosity_to_flux()
 
@@ -149,8 +149,7 @@ class Observation(object):
                   self.instrument.redshift))
         L_dist = cosmology.cosmo.luminosity_distance(
             self.instrument.redshift).to(u.cm).value
-        self.cube = self.cube * u.Lsun.to('erg/s')/ (4 * np.pi * L_dist**2)
-        self.cube_extinction = self.cube_extinction / (4 * np.pi * L_dist**2)
+        self.cube = self.cube * u.Lsun.to('erg/s') / (4 * np.pi * L_dist**2)
 
     def add_noise(self, Noise):
         """todo."""
