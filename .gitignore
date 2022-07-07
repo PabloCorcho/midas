@@ -2,6 +2,8 @@
 **/**/__pychache__/
 src/midas/__pycache__
 *.png
+tests/generate_weave_cubes.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 measurements/__pycache__/*

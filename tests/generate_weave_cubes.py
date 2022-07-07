@@ -77,12 +77,10 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     cat_pos = ii
     f = h5py.File(os.path.join(input_path, 'sub_{}.hdf5'.format(gal_id)),
                   'r')
-    stars = f['stars']
-    gas = f['gas']
     galaxy = Galaxy(
         name=str(gal_id),
-        stars=stars,
-        gas=gas,
+        stars=f['stars'],
+        gas=f['gas'],
         gal_spin=np.array([mock_catalogue['spin_x'][cat_pos],
                            mock_catalogue['spin_y'][cat_pos],
                            mock_catalogue['spin_z'][cat_pos]]),
@@ -99,8 +97,8 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     weave_instrument.redshift = f['redshift_observation'][()]
     weave_instrument.get_pixel_physical_size()
     weave_instrument.detector_bins()
-    # %% # Perform observation
     observation.galaxy = galaxy
+    # %% # Perform observation
     observation.compute_los_emission(stellar=True, nebular=False,
                                      kinematics=True,
                                      dust_extinction=True)
