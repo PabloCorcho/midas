@@ -14,7 +14,7 @@ from .pseudoRT_model import RTModel
 from ppxf.ppxf_util import gaussian_filter1d
 from . import cosmology
 from .utils import fast_vector_norm, fast_interpolation
-
+from .cosmology import cosmo
 
 class Observation(object):
     """todo."""
@@ -86,12 +86,13 @@ class Observation(object):
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
                 mass, age, metals = (
-                    self.galaxy.stars['GFM_InitialMass'][part_i] * 1e10,
+                    self.galaxy.stars['GFM_InitialMass'][part_i]
+                    * 1e10/cosmo.h,
                     self.galaxy.stars['ages'][part_i] * 1e9,
                     self.galaxy.stars['GFM_Metallicity'][part_i]
                     )
                 x_pos, y_pos, z_pos = (
-                    self.galaxy.stars['ProjCoordinates'][:, part_i])
+                    self.galaxy.stars['ProjCoordinates'][:, part_i] / cosmo.h)
                 vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
 
                 xbin = np.digitize(x_pos,

@@ -19,7 +19,7 @@ logsnr_edges = np.linspace(-1, 3, 51)
 logsnr_bins = (logsnr_edges[:-1] + logsnr_edges[1:]) / 2
 
 hdul = fits.open(
-    '/home/pablo/WEAVE-Apertiff/mock_cubes/galaxy_ID_202637_xsl_BLUE.fits.gz')
+    '/home/pablo/WEAVE-Apertiff/mock_cubes/227583/galaxy_ID_227583_xsl_BLUE.fits.gz')
 
 flux = hdul[1].data * 1e-18
 sigma = 1e-18/np.sqrt(hdul[2].data)
