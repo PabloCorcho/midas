@@ -85,14 +85,12 @@ class Observation(object):
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
-<<<<<<< HEAD
                 mass, age, metals = (
                     self.galaxy.stars['GFM_InitialMass'][part_i].copy()
                     * 1e10/cosmo.h,
                     self.galaxy.stars['ages'][part_i].copy() * 1e9,
                     self.galaxy.stars['GFM_Metallicity'][part_i].copy()
                     )
-=======
                 mass, age, metals, wind = (
                     self.galaxy.stars['GFM_InitialMass'][part_i]
                     * 1e10/cosmo.h,
@@ -101,7 +99,6 @@ class Observation(object):
                     self.galaxy.stars['wind'][part_i])
                 if wind:
                     continue
->>>>>>> c70647ea4b1a1a1b0489525d65ec16631949bd64
                 x_pos, y_pos, z_pos = (
                     self.galaxy.stars['ProjCoordinates'][:, part_i].copy() / cosmo.h)
                 vel_z = self.galaxy.stars['ProjVelocities'][2, part_i].copy()
