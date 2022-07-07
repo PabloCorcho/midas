@@ -102,7 +102,7 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     observation.compute_los_emission(stellar=True, nebular=False,
                                      kinematics=True,
                                      dust_extinction=True)
-
+    # print(len(galaxy.stars['Masses']), len(galaxy.stars['ages']))
     # %% Computing physical maps
     mass_map = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
@@ -491,4 +491,5 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
         os.path.join(gal_output_path, 'maps_galaxy_{}.pdf'.format(gal_id)),
         bbox_inches='tight')
     plt.close(fig)
+    del galaxy, f
 # Mr Krtxo \(ﾟ▽ﾟ)/
