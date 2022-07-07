@@ -64,6 +64,7 @@ class Galaxy(object):
             self.stars['ages'] = np.interp(
                 self.stars['GFM_StellarFormationTime'],
                 cosmology.scale_f[::-1], cosmology.age_f[::-1])
+
     def build_gas(self):
         """todo."""
         if self.gas_params is not None:
@@ -84,9 +85,11 @@ class Galaxy(object):
     def proyect_galaxy(self, orthogonal_vector=None):
         """
         Compute the projected the positions and velocities of all galaxy elements.
+
         If no vector is provided, the particles will be projected to the XY plane.
-        Arguments
-        ---------
+
+        Parameters
+        ----------
         orthogonal_vector: np.array (default=(0, 0, 1))
             Orthogonal vector to the projected plane.
         """
