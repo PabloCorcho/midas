@@ -9,12 +9,13 @@ from astropy import units as u
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-from .smoothing_kernel import CubicSplineKernel, GaussianKernel
+# from .smoothing_kernel import CubicSplineKernel, GaussianKernel
 from .pseudoRT_model import RTModel
 from ppxf.ppxf_util import gaussian_filter1d
 from . import cosmology
-from .utils import fast_vector_norm, fast_interpolation
+from .utils import fast_interpolation
 from .cosmology import cosmo
+
 
 class Observation(object):
     """todo."""
@@ -50,7 +51,7 @@ class Observation(object):
         self.SSP.convolve_sed(profile=gaussian_filter1d,
                               **dict(sig=lsf_sigma /
                                      np.median(np.diff(self.SSP.wavelength))))
-        self.SSP.interpolate_sed(self.instrument.wavelength_edges.value) # TODO: remove
+        self.SSP.interpolate_sed(self.instrument.wavelength_edges.value)
 
     def compute_los_emission(self, stellar=True, nebular=False,
                              dust_extinction=True, kinematics=True,
@@ -86,12 +87,14 @@ class Observation(object):
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
-                mass, age, metals = (
+                mass, age, metals, wind = (
                     self.galaxy.stars['GFM_InitialMass'][part_i]
                     * 1e10/cosmo.h,
                     self.galaxy.stars['ages'][part_i] * 1e9,
-                    self.galaxy.stars['GFM_Metallicity'][part_i]
-                    )
+                    self.galaxy.stars['GFM_Metallicity'][part_i],
+                    self.galaxy.stars['wind'][part_i])
+                if wind:
+                    continue
                 x_pos, y_pos, z_pos = (
                     self.galaxy.stars['ProjCoordinates'][:, part_i] / cosmo.h)
                 vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
@@ -112,7 +115,7 @@ class Observation(object):
                 particle_pos = xbin, ybin
                 # Stellar population synthesis --------------------------------
                 sed = self.SSP.compute_burstSED(age, metals)
-                self.galaxy.stars['MLR'][part_i] = np.median(sed[mlr_mask])
+                self.galaxy.stars['MLR'][part_i] = np.mean(sed[mlr_mask])
                 sed *= mass
                 # Dust extinction ---------------------------------------------
                 if dust_extinction:
@@ -135,7 +138,6 @@ class Observation(object):
                     self.instrument.delta_wave)
                 # Cube storage ------------------------------------------------
                 self.cube[:, particle_pos[0], particle_pos[1]] += sed
-
                 # if part_i > 100:
                 #     break
         print('\n [Observation] LOS emission computed successfully')
@@ -147,9 +149,9 @@ class Observation(object):
         print(' [Observation] Converting luminosities to observed fluxes for'
               + ' a galaxy located at z={:.4f}'.format(
                   self.instrument.redshift))
-        L_dist = cosmology.cosmo.luminosity_distance(
+        l_dist = cosmology.cosmo.luminosity_distance(
             self.instrument.redshift).to(u.cm).value
-        self.cube = self.cube * u.Lsun.to('erg/s') / (4 * np.pi * L_dist**2)
+        self.cube = self.cube * u.Lsun.to('erg/s') / (4 * np.pi * l_dist**2)
 
     def add_noise(self, Noise):
         """todo."""
