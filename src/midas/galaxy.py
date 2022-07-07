@@ -129,31 +129,31 @@ class Galaxy(object):
             inv_W = np.linalg.inv(W)
             if self.stars_params is not None:
                 self.stars['ProjCoordinates'] = np.array([
-                    sum(self.stars['Coordinates'] * u[np.newaxis, :], axis=1),
-                    sum(self.stars['Coordinates'] * v[np.newaxis, :], axis=1),
-                    sum(self.stars['Coordinates'] * w[np.newaxis, :], axis=1)
+                    np.sum(self.stars['Coordinates'] * u[np.newaxis, :], axis=1),
+                    np.sum(self.stars['Coordinates'] * v[np.newaxis, :], axis=1),
+                    np.sum(self.stars['Coordinates'] * w[np.newaxis, :], axis=1)
                     ])
                 self.stars['ProjVelocities'] = np.array([
-                    sum(self.stars['Velocities'] * inv_W[0, :][np.newaxis, :],
-                        axis=1),
-                    sum(self.stars['Velocities'] * inv_W[1, :][np.newaxis, :],
-                        axis=1),
-                    sum(self.stars['Velocities'] * inv_W[2, :][np.newaxis, :],
-                        axis=1)
+                    np.sum(self.stars['Velocities'] * inv_W[0, :][np.newaxis, :],
+                           axis=1),
+                    np.sum(self.stars['Velocities'] * inv_W[1, :][np.newaxis, :],
+                           axis=1),
+                    np.sum(self.stars['Velocities'] * inv_W[2, :][np.newaxis, :],
+                           axis=1)
                     ])
             if self.gas_params is not None:
                 self.gas['ProjCoordinates'] = np.array([
-                    sum(self.gas['Coordinates'] * u[np.newaxis, :], axis=1),
-                    sum(self.gas['Coordinates'] * v[np.newaxis, :], axis=1),
-                    sum(self.gas['Coordinates'] * w[np.newaxis, :], axis=1)
+                    np.sum(self.gas['Coordinates'] * u[np.newaxis, :], axis=1),
+                    np.sum(self.gas['Coordinates'] * v[np.newaxis, :], axis=1),
+                    np.sum(self.gas['Coordinates'] * w[np.newaxis, :], axis=1)
                     ])
                 self.gas['ProjVelocities'] = np.array([
-                    sum(self.gas['Velocities'] * inv_W[0, :][np.newaxis, :],
-                        axis=1),
-                    sum(self.gas['Velocities'] * inv_W[1, :][np.newaxis, :],
-                        axis=1),
-                    sum(self.gas['Velocities'] * inv_W[2, :][np.newaxis, :],
-                        axis=1)
+                    np.sum(self.gas['Velocities'] * inv_W[0, :][np.newaxis, :],
+                           axis=1),
+                    np.sum(self.gas['Velocities'] * inv_W[1, :][np.newaxis, :],
+                           axis=1),
+                    np.sum(self.gas['Velocities'] * inv_W[2, :][np.newaxis, :],
+                           axis=1)
                     ])
 
     def get_stellar_map(self, out, stat_val, statistic='sum'):
@@ -172,7 +172,7 @@ class Galaxy(object):
                     continue
                 out[xbin, ybin] += val
                 count[xbin, ybin] += 1
-            out = out / count
+            out = out / (count + 1e-10)
         elif statistic == 'std':
             occupated_bins = np.unique(
                 np.array([self.stars['xbin'], self.stars['ybin']]).T,

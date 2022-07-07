@@ -20,19 +20,59 @@ import numpy as np
 from astropy.io import fits
 import os
 
-output = '/home/pablo/WEAVE-Apertiff/mock_cubes/'
-input_path = '/home/pablo/WEAVE-Apertiff/weave_sample/data/'
+output = '/Users/pcorcho/WEAVE/mock_cubes/'
+input_path = '/Volumes/Elements/WEAVE/weave_sample/data/'
 
 mock_catalogue = fits.getdata(
-    '/home/pablo/WEAVE-Apertiff/weave_sample/mock_WA_sample.fits')
+    '/Volumes/Elements/WEAVE/weave_sample/mock_WA_sample.fits')
+
+# %% Initialise noise model
+S = signal2noise.Signal(LIFU=True, offset=0.1,
+                        throughput_table=True, sky_model=True)
+time = 1200.
+n_exp = 3
+airmass = 1.2
+seeing = signal2noise.totalSeeing(1.0)
+# SSP model used for generating stellar spectra
+
+# Default values for g band (plots)
+mag_lim = 24  # mag / arcsec**2
+band_wl = 4686
+sn_lim = 40
+c_ligth_aa = 3e18
+f_lim = (10 ** (-0.4 * (mag_lim + 48.60)) * c_ligth_aa / band_wl ** 2
+         / 0.5**2)  # erg/s/AA/cm2
+# =============================================================================
+# Create the Stellar Population Synthesis model
+# =============================================================================
+ssp_model = SSP.PyPopStar(IMF='KRO')
+ssp_name = 'pypopstar'
+# ssp_model = SSP.XSL(IMF='Kroupa', ISO='P00')
+# =============================================================================
+# Create the WEAVE instrument for observing the galaxy
+# Some properties will be updated during the loop by means of the provided z
+# =============================================================================
+weave_instrument = WEAVE_Instrument(z=0.1)
+
+# =============================================================================
+# Create the template for the observations (this way the SSP is prepared only once)
+# Some properties will be updated during the loop (instrument, galaxy)
+# =============================================================================
+observation = Observation(SSP=ssp_model, Instrument=weave_instrument,
+                          Galaxy=None)
 
 for ii, gal_id in enumerate(mock_catalogue['ID']):
     print('Generating cube {}, gal_ID: {}'.format(ii, gal_id))
     # =============================================================================
     # Create a Galaxy object
     # =============================================================================
+    if mock_catalogue['n_part_stars'][ii] < 10000:
+        continue
     gal_output_path = os.path.join(output, str(gal_id))
-    if not os.path.isdir(gal_output_path):
+    if os.path.isdir(gal_output_path):
+        if os.path.isfile(os.path.join(gal_output_path, 'maps_galaxy_{}.pdf'.format(gal_id))):
+            continue
+    else:
         os.mkdir(gal_output_path)
     cat_pos = ii
     f = h5py.File(os.path.join(input_path, 'sub_{}.hdf5'.format(gal_id)),
@@ -55,35 +95,12 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
         )
     galaxy.set_to_galaxy_rest_frame()
     galaxy.proyect_galaxy(None)
-
-    # =============================================================================
-    # Create the WEAVE instrument for observing the galaxy
-    # =============================================================================
-    weave_instrument = WEAVE_Instrument(z=f['redshift_observation'][()])
-    # SSP model used for generating stellar spectra
-    # =============================================================================
-    # Create the Stellar Population Synthesis model
-    # =============================================================================
-    ssp_model = SSP.PyPopStar(IMF='KRO')
-    # ssp_model = SSP.XSL(IMF='Kroupa', ISO='P00')
-
-    # %% Initialise noise model
-    S = signal2noise.Signal(LIFU=True, offset=0.1,
-                            throughput_table=True, sky_model=True)
-    time = 1200.
-    n_exp = 3
-    airmass = 1.2
-    seeing = signal2noise.totalSeeing(1.0)
-    # Default values for g band (plots)
-    mag_lim = 24  # mag / arcsec**2
-    band_wl = 4686
-    sn_lim = 40
-    c_ligth_aa = 3e18
-    f_lim = (10**(-0.4 * (mag_lim + 48.60)) * c_ligth_aa / band_wl**2
-             / weave_instrument.pixel_size.to('arcsec').value)  # erg/s/AA/cm2
+    # Update instrument physical parameters
+    weave_instrument.redshift = f['redshift_observation'][()]
+    weave_instrument.get_pixel_physical_size()
+    weave_instrument.detector_bins()
     # %% # Perform observation
-    observation = Observation(SSP=ssp_model, Instrument=weave_instrument,
-                              Galaxy=galaxy)
+    observation.galaxy = galaxy
     observation.compute_los_emission(stellar=True, nebular=False,
                                      kinematics=True,
                                      dust_extinction=True)
@@ -105,14 +122,14 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     mw_mean_vel = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ProjVelocities'][2] * galaxy.stars['Masses'],
+        stat_val=galaxy.stars['ProjVelocities'][2].copy() * galaxy.stars['Masses'].copy(),
         statistic='sum')
     mw_mean_vel = mw_mean_vel / (mass_map + 1e-10)
 
     mw_mean_vel_sq = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ProjVelocities'][2]**2 * galaxy.stars['Masses'],
+        stat_val=galaxy.stars['ProjVelocities'][2].copy()**2 * galaxy.stars['Masses'].copy(),
         statistic='sum')
     mw_mean_vel_sq = mw_mean_vel_sq / (mass_map + 1e-10)
 
@@ -122,14 +139,14 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     lw_mean_vel = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ProjVelocities'][2] * galaxy.stars['MLR'],
+        stat_val=galaxy.stars['ProjVelocities'][2].copy() * galaxy.stars['MLR'].copy(),
         statistic='sum')
     lw_mean_vel = lw_mean_vel / (mlr_sum_map + 1e-10)
 
     lw_mean_vel_sq = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ProjVelocities'][2]**2 * galaxy.stars['MLR'],
+        stat_val=galaxy.stars['ProjVelocities'][2].copy()**2 * galaxy.stars['MLR'].copy(),
         statistic='sum')
     lw_mean_vel_sq = lw_mean_vel_sq / (mlr_sum_map + 1e-10)
 
@@ -139,14 +156,14 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     mw_mean_age = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ages'] * galaxy.stars['Masses'],
+        stat_val=galaxy.stars['ages'].copy() * galaxy.stars['Masses'].copy(),
         statistic='sum')
     mw_mean_age = mw_mean_age / (mass_map + 1e-10)
 
     lw_mean_age = galaxy.get_stellar_map(
         out=np.zeros((weave_instrument.det_x_n_bins,
                       weave_instrument.det_y_n_bins)),
-        stat_val=galaxy.stars['ages'] * galaxy.stars['MLR'],
+        stat_val=galaxy.stars['ages'].copy() * galaxy.stars['MLR'].copy(),
         statistic='sum')
     lw_mean_age = lw_mean_age / (mlr_sum_map + 1e-10)
 
@@ -158,7 +175,6 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
         statistic='mean')
 
     mass_map *= 1e10 / cosmo.h
-
     # %% Smoothing
     sigma_kpc = 0.3
     sigma_pixel = np.min(
@@ -214,11 +230,7 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
                stellar_density,
                header='Msun/pc**2')
     # %%
-
     wave = observation.instrument.wavelength.value
-
-    band_wl = 4686
-
     cube_sigma = np.full_like(observation.cube, fill_value=np.nan)
 
     print('· Estimating SNR for each spaxel')
@@ -257,7 +269,7 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     SaveWEAVECube(
         observation,
         filename=os.path.join(gal_output_path,
-                              'galaxy_ID_{}_xsl'.format(galaxy.name)),
+                              'galaxy_ID_{}_{}'.format(galaxy.name, ssp_name)),
         funit=1e-18,
         data_size=np.float32)
     # Close HDF5 file
@@ -271,27 +283,15 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
                    observation.instrument.det_x_bins_kpc[-1])
     plot_y_lims = (observation.instrument.det_y_bins_kpc[0],
                    observation.instrument.det_y_bins_kpc[-1])
-    rect = plt.Rectangle(
-        (observation.instrument.det_x_bins_kpc[0],
-         observation.instrument.det_y_bins_kpc[0]),
-        observation.instrument.det_x_bins_kpc[-1]
-        - observation.instrument.det_x_bins_kpc[0],
-        observation.instrument.det_y_bins_kpc[-1]
-        - observation.instrument.det_y_bins_kpc[0],
-        fc='none',
-        ec='k',
-        alpha=1)
 
     fig, axs = plt.subplots(nrows=3, ncols=4, figsize=(20, 20), sharex=False,
                             sharey=False, gridspec_kw=dict(wspace=0.1,
                                                            hspace=0.1))
-
     ax = axs[0, 3]
-    ax.set_title(r'Median flux at 24 mag')
-    ax.loglog(wave, median_spec_24 / median_spec_err_24)
+    ax.set_title(r'$SNR/\AA$ for median flux at 24 mag')
+    ax.semilogy(wave, median_spec_24 / median_spec_err_24)
     ax.set_xlabel(r'$\lambda~(\AA)$')
-    ax.set_ylabel(r'$F_\lambda~(erg/s/cm^2/\AA)$')
-
+    ax.tick_params(which='both', left=False, right=True, labelleft=False, labelright=True, direction='in')
     # KINEMATICS
     ax = axs[0, 0]
     mappable = ax.pcolormesh(
@@ -447,7 +447,6 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
         fc='none',
         ec='k',
         alpha=1)
-    ax.add_patch(rect)
     ax.contour(observation.instrument.det_x_bins_kpc,
                observation.instrument.det_y_bins_kpc,
                snr.T, origin='lower',
@@ -475,7 +474,6 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
         fc='none',
         ec='k',
         alpha=1)
-    ax.add_patch(rect)
     ax.contour(observation.instrument.det_x_bins_kpc,
                observation.instrument.det_y_bins_kpc,
                snr.T, origin='lower',
@@ -494,8 +492,5 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     fig.savefig(
         os.path.join(gal_output_path, 'maps_galaxy_{}.pdf'.format(gal_id)),
         bbox_inches='tight')
-
-    # del observation
-
     plt.close(fig)
 # Mr Krtxo \(ﾟ▽ﾟ)/
