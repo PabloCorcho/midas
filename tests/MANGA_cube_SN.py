@@ -6,7 +6,6 @@ Created on Tue Jun 28 15:56:15 2022
 @author: pablo
 """
 
-from astropy.io import fits
 import numpy as np
 from matplotlib import pyplot as plt
 from FAENA.read_cube import MANGACube
@@ -18,12 +17,13 @@ logflux_bins = (logflux_edges[:-1] + logflux_edges[1:]) / 2
 logsnr_edges = np.linspace(-1, 3, 51)
 logsnr_bins = (logsnr_edges[:-1] + logsnr_edges[1:]) / 2
 
-cube_paths = glob('/home/pablo/obs_data/MANGA/cubes/*')
+cube_paths = glob('/Volumes/Elements/MANGA/DR17/cubes/*.gz')
 
 all_H = np.zeros((logflux_bins.size, logsnr_bins.size))
 all_p_fit = []
 all_p_cubic_fit = []
 for i, cube_path in enumerate(cube_paths):
+    print(i)
     cube = MANGACube(path=cube_path, abs_path=True)
     cube.get_flux()
     cube.get_wavelength(to_rest_frame=True)
@@ -56,6 +56,8 @@ for i, cube_path in enumerate(cube_paths):
     plt.close()
 
     cube.close_cube()
+    if i > 100:
+        break
 
 # %%
 mean_lin_fit = np.poly1d(np.mean(all_p_fit, axis=0))
@@ -78,9 +80,14 @@ plt.ylim(logsnr_edges.min(), logsnr_edges.max())
 plt.xlim(logflux_edges.min(), logflux_edges.max())
 plt.xlabel(r'$\log_{10}(F)$')
 plt.ylabel(r'$\log_{10}(SNR)$')
+plt.savefig('manga_logflux_snr.png', bbox_inches='tight')
+plt.close()
+
 # %%
 plt.figure()
 plt.plot(logflux_bins,
          10**(mean_lin_fit(logflux_bins) - mean_cubic_fit(logflux_bins)))
 plt.xlabel(r'$\log_{10}(F)$')
 plt.ylabel(r'$\frac{SNR_{lin}}{SNR_{cubic}}$', fontsize=14)
+plt.savefig('manga_snr_ratio.png', bbox_inches='tight')
+plt.close()
