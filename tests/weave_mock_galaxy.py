@@ -24,7 +24,7 @@ output = '/home/pablo/WEAVE-Apertiff/mock_cubes/'
 # Create a Galaxy object
 # =============================================================================
 gal_id = 188859
-gal_id = 239995
+gal_id = 177729
 gal_output_path = os.path.join(output, str(gal_id))
 if not os.path.isdir(gal_output_path):
     os.mkdir(gal_output_path)
