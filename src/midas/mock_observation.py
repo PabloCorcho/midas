@@ -81,20 +81,18 @@ class Observation(object):
                                        grid_resolution_kpc=0.5)
 
             for part_i in range(n_stellar_part):
-                # if part_i > 50:
-                #     break
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
                 # Particle data
                 mass, age, metals = (
-                    self.galaxy.stars['GFM_InitialMass'][part_i]
+                    self.galaxy.stars['GFM_InitialMass'][part_i].copy()
                     * 1e10/cosmo.h,
-                    self.galaxy.stars['ages'][part_i] * 1e9,
-                    self.galaxy.stars['GFM_Metallicity'][part_i]
+                    self.galaxy.stars['ages'][part_i].copy() * 1e9,
+                    self.galaxy.stars['GFM_Metallicity'][part_i].copy()
                     )
                 x_pos, y_pos, z_pos = (
-                    self.galaxy.stars['ProjCoordinates'][:, part_i] / cosmo.h)
-                vel_z = self.galaxy.stars['ProjVelocities'][2, part_i]
+                    self.galaxy.stars['ProjCoordinates'][:, part_i].copy() / cosmo.h)
+                vel_z = self.galaxy.stars['ProjVelocities'][2, part_i].copy()
 
                 xbin = np.digitize(x_pos,
                                    self.instrument.det_x_bin_edges_kpc) - 1
