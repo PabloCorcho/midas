@@ -34,9 +34,7 @@ class Observation(object):
         # Synthetic cube
         self.cube = np.zeros((self.instrument.wavelength.size,
                               self.instrument.det_x_n_bins,
-                              self.instrument.det_y_n_bins
-                              )
-                             )
+                              self.instrument.det_y_n_bins))
         # Physical data where all the maps (kinematics, SFH) will be stored
 
     def prepare_SSP(self):
@@ -61,7 +59,7 @@ class Observation(object):
             ssp_wave = self.SSP.wavelength
             mlr_mask = (ssp_wave > mass_to_light_wave[0]
                         ) & (ssp_wave > mass_to_light_wave[1])
-            n_stellar_part = self.galaxy.stars['Masses'].size
+            n_stellar_part = self.galaxy.stars['count']
 
             print(' [Observation] Computing stellar spectra for'
                   + ' {} star particles'.format(n_stellar_part))
@@ -84,13 +82,7 @@ class Observation(object):
             for part_i in range(n_stellar_part):
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
                     part_i, part_i/n_stellar_part * 100), end='', flush=True)
-                # Particle data
-                mass, age, metals = (
-                    self.galaxy.stars['GFM_InitialMass'][part_i].copy()
-                    * 1e10/cosmo.h,
-                    self.galaxy.stars['ages'][part_i].copy() * 1e9,
-                    self.galaxy.stars['GFM_Metallicity'][part_i].copy()
-                    )
+                # Read particle data
                 mass, age, metals, wind = (
                     self.galaxy.stars['GFM_InitialMass'][part_i]
                     * 1e10/cosmo.h,
@@ -98,11 +90,12 @@ class Observation(object):
                     self.galaxy.stars['GFM_Metallicity'][part_i],
                     self.galaxy.stars['wind'][part_i])
                 if wind:
+                    # Wind particle
                     continue
                 x_pos, y_pos, z_pos = (
                     self.galaxy.stars['ProjCoordinates'][:, part_i].copy() / cosmo.h)
                 vel_z = self.galaxy.stars['ProjVelocities'][2, part_i].copy()
-
+                # Detector pixel
                 xbin = np.digitize(x_pos,
                                    self.instrument.det_x_bin_edges_kpc) - 1
                 ybin = np.digitize(y_pos,
@@ -112,11 +105,8 @@ class Observation(object):
                         (ybin >= self.instrument.det_y_n_bins)):
                     # particle out of FoV
                     continue
-
                 self.galaxy.stars['xbin'][part_i] = xbin
                 self.galaxy.stars['ybin'][part_i] = ybin
-
-                particle_pos = xbin, ybin
                 # Stellar population synthesis --------------------------------
                 sed = self.SSP.compute_burstSED(age, metals)
                 self.galaxy.stars['MLR'][part_i] = np.mean(sed[mlr_mask])
@@ -141,7 +131,7 @@ class Observation(object):
                     self.instrument.wavelength_edges.value,
                     self.instrument.delta_wave)
                 # Cube storage ------------------------------------------------
-                self.cube[:, particle_pos[0], particle_pos[1]] += sed
+                self.cube[:, xbin, ybin] += sed
                 # if part_i > 100:
                 #     break
         print('\n [Observation] LOS emission computed successfully')

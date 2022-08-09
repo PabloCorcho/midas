@@ -36,7 +36,9 @@ class Galaxy(object):
     project_galaxy
     """
     stars = {}
+    stars_params = None
     gas = {}
+    gas_params = None
 
     def __init__(self, kernel=None, **kwargs):
 
@@ -55,16 +57,16 @@ class Galaxy(object):
         if stars_params is not None:
             for key in list(stars_params.keys()):
                 self.stars[key] = stars_params[key][()]
-
-            if 'ages' not in self.stars.keys():
-                ages = np.full(self.stars['GFM_StellarFormationTime'].size,
-                               fill_value=np.nan)
-                wind = self.stars['GFM_StellarFormationTime'] < 0
-                ages[~wind] = np.interp(
-                    self.stars['GFM_StellarFormationTime'][~wind],
-                    cosmology.scale_f[::-1], cosmology.age_f[::-1])
-                self.stars['ages'] = ages
-                self.stars['wind'] = wind
+            self.stars_params = True
+            # Compute stellar particle age
+            ages = np.full(self.stars['GFM_StellarFormationTime'].size,
+                           fill_value=np.nan)
+            wind = self.stars['GFM_StellarFormationTime'] < 0
+            ages[~wind] = np.interp(
+                self.stars['GFM_StellarFormationTime'][~wind],
+                cosmology.scale_f[::-1], cosmology.age_f[::-1])
+            self.stars['ages'] = ages
+            self.stars['wind'] = wind
 
     def build_gas(self):
         """todo."""

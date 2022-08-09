@@ -66,7 +66,7 @@ for ii, gal_id in enumerate(mock_catalogue['ID']):
     # =============================================================================
     # Create a Galaxy object
     # =============================================================================
-    if mock_catalogue['n_part_stars'][ii] < 10000:
+    if mock_catalogue['n_part_stars'][ii] < 100000:
         continue
     gal_output_path = os.path.join(output, str(gal_id))
     if os.path.isdir(gal_output_path):
