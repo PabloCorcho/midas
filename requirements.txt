@@ -1,0 +1,10 @@
+numpy~=1.19.1
+astropy~=5.0
+numba~=0.55.2
+matplotlib~=3.5.1
+h5py~=3.7.0
+scipy~=1.7.3
+PyYAML~=5.3.1
+extinction~=0.4.6
+ppxf~=8.0.2
+setuptools~=45.2.0

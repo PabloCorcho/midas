@@ -3,9 +3,10 @@ from .smoothing_kernel import GaussianKernel
 from . import cosmology
 from matplotlib import pyplot as plt
 
+
 class Galaxy(object):
     """
-    Def. This class represents a galaxy, containing different components such as stellar and gas particles.
+    Class representing a galaxy. It contains different components such as stellar and gas particles.
 
     Attributes
     ----------
@@ -44,16 +45,20 @@ class Galaxy(object):
 
         # Name of the galaxy
         self.name = kwargs.get('name', "gal")
+        # Stellar particles
         stars_params = kwargs.get('stars', None)
         self.build_stars(stars_params)
+        # Gas particles
         self.gas_params = kwargs.get('gas', None)
         self.build_gas()
-        self.spin = kwargs.get('gal_spin', np.zeros(3))  # kpc/(km/s)
+        # Global parameters
+        self.spin = kwargs.get('gal_spin', np.zeros(3))  # kpc * km/s
         self.velocity = kwargs.get('gal_vel', np.zeros(3))  # km/s
         self.position = kwargs.get('gal_pos', np.zeros(3))  # kpc
 
     def build_stars(self, stars_params):
         """todo."""
+        print("[Galaxy] Preparing stellar particle data")
         if stars_params is not None:
             for key in list(stars_params.keys()):
                 self.stars[key] = stars_params[key][()]
@@ -67,9 +72,12 @@ class Galaxy(object):
                 cosmology.scale_f[::-1], cosmology.age_f[::-1])
             self.stars['ages'] = ages
             self.stars['wind'] = wind
+        else:
+            print("[Galaxy] Stellar data not provided")
 
     def build_gas(self):
         """todo."""
+        print("[Galaxy] Preparing gas particle data")
         if self.gas_params is not None:
             for key in list(self.gas_params.keys()):
                 self.gas[key] = self.gas_params[key][()]
