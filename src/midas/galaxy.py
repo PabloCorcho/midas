@@ -73,15 +73,18 @@ class Galaxy(object):
         if self.gas_params is not None:
             for key in list(self.gas_params.keys()):
                 self.gas[key] = self.gas_params[key][()]
+            self.gas_params = True
 
     def set_to_galaxy_rest_frame(self):
         """Set the position and velocity of gas and stellar particles to the galaxy rest frame."""
         if self.stars_params is not None:
             self.stars['Velocities'] += -self.velocity[np.newaxis, :]
             self.stars['Coordinates'] += -self.position[np.newaxis, :]
+            print("Stellar particles in restframe")
         if self.gas_params is not None:
             self.gas['Velocities'] += -self.velocity[np.newaxis, :]
             self.gas['Coordinates'] += -self.position[np.newaxis, :]
+            print("Gas particles in restframe")
         self.velocity = np.zeros(3)
         self.position = np.zeros(3)
 
