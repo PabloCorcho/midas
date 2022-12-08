@@ -127,7 +127,8 @@ class Observation(object):
                 if kinematics:
                     # (blue/red)shifting spectra
                     redshift = vel_z / 3e5
-                    wave = ssp_wave * (1 + redshift)
+                    wave = self.shitf_spectra(ssp_wave, redshift)
+
                 # Instrumental resolution -------------------------------------
                 sed = fast_interpolation(
                     sed, np.diff(wave)[0], wave,
@@ -153,6 +154,11 @@ class Observation(object):
     def add_noise(self, Noise):
         """todo."""
         pass
+
+    @staticmethod
+    def shit_spectra(wavelength, redshift):
+        """Shifts a given wavelength spectra."""
+        return wavelength / (1 + redshift)
 
     @staticmethod
     def gaussian_smooth(ndimage, sigma):
