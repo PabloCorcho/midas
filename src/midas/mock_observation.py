@@ -16,6 +16,7 @@ from . import cosmology
 from .utils import fast_interpolation
 from .cosmology import cosmo
 
+from midas.models.gas import neutral_21cm_line
 
 class Observation(object):
     """todo."""
@@ -54,7 +55,7 @@ class Observation(object):
                                      np.median(np.diff(self.SSP.wavelength))))
         self.SSP.interpolate_sed(self.instrument.wavelength_edges.value)
 
-    def compute_los_emission(self, stellar=True, nebular=False,
+    def compute_los_emission(self, stellar=True, gas=False,
                              dust_extinction=True, kinematics=True,
                              mass_to_light_wave=[5450, 5550]):
         """Compute the emission along the LOS."""
@@ -62,19 +63,18 @@ class Observation(object):
             ssp_wave = self.SSP.wavelength
             mlr_mask = (ssp_wave > mass_to_light_wave[0]
                         ) & (ssp_wave > mass_to_light_wave[1])
-            n_stellar_part = self.galaxy.stars['count']
+            n_part = self.galaxy.stars['count']
 
             print(' [Observation] Computing stellar spectra for'
-                  + ' {} star particles'.format(n_stellar_part))
+                  + ' {} star particles'.format(n_part))
 
             # Store new properties computed on-the-fly
-            self.galaxy.stars['xbin'] = - np.ones(n_stellar_part, dtype=int)
-            self.galaxy.stars['ybin'] = - np.ones(n_stellar_part, dtype=int)
-            self.galaxy.stars['MLR'] = np.full(n_stellar_part,
-                                               fill_value=np.nan)
+            self.galaxy.stars['xbin'] = - np.ones(n_part, dtype=int)
+            self.galaxy.stars['ybin'] = - np.ones(n_part, dtype=int)
+            self.galaxy.stars['MLR'] = np.full(n_part, fill_value=np.nan)
             if dust_extinction:
                 lambda_tau = 5500
-                self.galaxy.stars['tau_5500'] = np.full(n_stellar_part,
+                self.galaxy.stars['tau_5500'] = np.full(n_part,
                                                         fill_value=np.nan)
                 # Initialise pseudo-radiative transfer module
                 self.rtmodel = RTModel(wave=ssp_wave,
@@ -82,9 +82,9 @@ class Observation(object):
                                        galaxy=self.galaxy,
                                        grid_resolution_kpc=0.5)
 
-            for part_i in range(n_stellar_part):
+            for part_i in range(n_part):
                 print("\r Particle --> {}, Completion: {:2.2f} %".format(
-                    part_i, part_i/n_stellar_part * 100), end='', flush=True)
+                    part_i, part_i/n_part * 100), end='', flush=True)
                 # Read particle data
                 mass, age, metals, wind = (
                     self.galaxy.stars['GFM_InitialMass'][part_i]
@@ -137,6 +137,55 @@ class Observation(object):
                 # Cube storage ------------------------------------------------
                 self.cube[:, xbin, ybin] += sed
                 # if part_i > 100:
+                #     break
+        if gas:
+            n_part = self.galaxy.gas['count']
+
+            print(' [Observation] Computing gas spectra for'
+                  + ' {} gas particles'.format(n_part))
+
+            # Store new properties computed on-the-fly
+            self.galaxy.gas['xbin'] = - np.ones(n_part, dtype=int)
+            self.galaxy.gas['ybin'] = - np.ones(n_part, dtype=int)
+
+            for part_i in range(n_part):
+                print("\r Particle --> {}, Completion: {:2.2f} %".format(
+                    part_i, part_i/n_part * 100), end='', flush=True)
+                # Read particle data
+                mass, metals = (
+                    self.galaxy.gas['Masses'][part_i] * 1e10/cosmo.h,
+                    self.galaxy.gas['GFM_Metallicity'][part_i])
+
+                x_pos, y_pos, z_pos = (
+                    self.galaxy.gas['ProjCoordinates'][:, part_i].copy()
+                    / cosmo.h)
+                vel_z = self.galaxy.gas['ProjVelocities'][2, part_i].copy()
+                # Detector pixel
+                xbin = np.digitize(x_pos,
+                                   self.instrument.det_x_bin_edges_kpc) - 1
+                ybin = np.digitize(y_pos,
+                                   self.instrument.det_y_bin_edges_kpc) - 1
+                if ((xbin <= 0) | (ybin <= 0) |
+                    (xbin >= self.instrument.det_x_n_bins) |
+                        (ybin >= self.instrument.det_y_n_bins)):
+                    # print("[Observation] Particle out of FoV")
+                    continue
+                self.galaxy.gas['xbin'][part_i] = xbin
+                self.galaxy.gas['ybin'][part_i] = ybin
+
+                # Kinematics --------------------------------------------------
+                # if kinematics:
+                #     # (blue/red)shifting spectra
+                #     redshift = 
+                #     wave = self.shitf_spectra(ssp_wave, redshift)
+
+                sed = neutral_21cm_line(self.instrument.wavelength.value, mass,
+                                        self.instrument.lsf.mean(),
+                                        line_pos=21.12e8 * (1 + vel_z / 3e5))
+
+                # Cube storage ------------------------------------------------
+                self.cube[:, xbin, ybin] += sed
+                # if part_i > 20000:
                 #     break
         print('\n [Observation] LOS emission computed successfully')
         # Converting luminosity to observed fluxes

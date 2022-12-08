@@ -135,7 +135,7 @@ class HI_Instrument(IFU):
         'cube_templates', 'hi_instrument', 'hi_instrument.yml')
     wl_lsf, lsf = np.loadtxt(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
-        'cube_templates', 'hi_instrument', 'hi_lsf'))
+        'cube_templates', 'hi_instrument', 'hi_lsf'), unpack=True)
 
     def __init__(self, **kwargs):
         print('-' * 50
