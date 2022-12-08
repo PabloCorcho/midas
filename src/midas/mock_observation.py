@@ -20,7 +20,7 @@ from .cosmology import cosmo
 class Observation(object):
     """todo."""
 
-    def __init__(self, SSP, Instrument, Galaxy):
+    def __init__(self, Instrument=None, Galaxy=None, SSP=None):
         self.rtmodel = None
         print('-' * 50 + '\n [OBSERVATION]  Initialising observation\n'
               + '-' * 50)
@@ -40,7 +40,10 @@ class Observation(object):
     def prepare_SSP(self):
         """Interpolate SSP models to Instrumental resolution and apply LSF convolution."""
         # This method is extremelly usefull in order to speed up the computation time.
-        print(' [Observation]  Interpolating SSP models to instrumental resolution')
+        if self.SSP is None:
+            return
+        else:
+            print(' [Observation]  Interpolating SSP models to instrumental resolution')
         self.SSP.cut_models(self.instrument.wavelength_edges.min().value * .9,
                             self.instrument.wavelength_edges.max().value * 1.1)
         lsf_sigma = np.interp(self.SSP.wavelength,
