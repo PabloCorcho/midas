@@ -1,0 +1,10 @@
+# Field of view in arcseconds
+fov: [1000., 1000.]
+# Wavelength resolution (assumed to be the same for both arms)
+delta_wave: 100000.
+# Wavelength range covered by the instrument
+lambda_init: 2100000000.
+lambda_end: 2120000000.
+
+# Pixel spatial size in arcsecs
+pixel_size: 15.
