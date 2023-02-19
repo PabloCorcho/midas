@@ -39,8 +39,9 @@ def emission_HI(m_particles,T):
         # ionization 
         return 0.0
     if T<1e4:
-        return ((3/4) * N_H * A_TR * const.h * FREQ).to(u.erg / u.s) # Luminosity [erg/s]
-    
+        L = ((3/4) * N_H * A_TR * const.h * FREQ).to(u.erg / u.s) # Luminosity [erg/s]
+        return L.value
+
 """
 j=emission_HI(10**9.91, 200)
 print(format(j,'.1E'))
