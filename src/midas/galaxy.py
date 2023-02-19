@@ -1,4 +1,5 @@
 import numpy as np
+import h5py
 from .smoothing_kernel import GaussianKernel
 from . import cosmology
 from matplotlib import pyplot as plt
@@ -11,11 +12,7 @@ class Galaxy(object):
     ----------
     name : str (optional, default='gal')
         Name of the galaxy to be used for storage.
-    star_params : dict (optional)
-        Input dictionary containing all stellar properties (position, vel, mass, metallicity)
     stars : dict #TODO
-    gas_params : dict (optional)
-        Dictionary containing all gas properties (position, vel, mass, metallicity, ...)
     gas : dict #TODO
     position : np.array (optional)
         (x, y, z) np.array vector corresponding to the position of the galaxy in the same frame as the particles.
@@ -36,28 +33,31 @@ class Galaxy(object):
     project_galaxy
     """
     stars = {}
-    stars_params = None
     gas = {}
-    gas_params = None
 
     def __init__(self, kernel=None, **kwargs):
 
-        # Name of the galaxy
-        self.name = kwargs.get('name', "gal")
-        stars_params = kwargs.get('stars', None)
-        self.build_stars(stars_params)
-        self.gas_params = kwargs.get('gas', None)
-        self.build_gas()
-        self.spin = kwargs.get('gal_spin', np.zeros(3))  # kpc/(km/s)
-        self.velocity = kwargs.get('gal_vel', np.zeros(3))  # km/s
-        self.position = kwargs.get('gal_pos', np.zeros(3))  # kpc
+        # Particles
+        stellar_particles = kwargs.get('stars', None)
+        self.build_stars(stellar_particles)
+        gas_particles = kwargs.get('gas', None)
+        self.build_gas(gas_particles)
 
-    def build_stars(self, stars_params):
+        # Galaxy params
+        self.name = kwargs.get('name', "gal")
+        self.spin = kwargs.get('gal_spin',
+                               np.full(3, fill_value=np.nan))  # kpc/(km/s)
+        self.velocity = kwargs.get('gal_vel',
+                                   np.full(3, fill_value=np.nan))  # km/s
+        self.position = kwargs.get('gal_pos',
+                                   np.full(3, fill_value=np.nan))  # kpc
+
+
+    def build_stars(self, particles):
         """todo."""
-        if stars_params is not None:
-            for key in list(stars_params.keys()):
-                self.stars[key] = stars_params[key][()]
-            self.stars_params = True
+        if particles is not None:
+            for key in list(particles.keys()):
+                self.stars[key] = particles[key][()]
             # Compute stellar particle age
             ages = np.full(self.stars['GFM_StellarFormationTime'].size,
                            fill_value=np.nan)
@@ -67,24 +67,40 @@ class Galaxy(object):
                 cosmology.scale_f[::-1], cosmology.age_f[::-1])
             self.stars['ages'] = ages
             self.stars['wind'] = wind
+        else:
+            self.stars = None
 
-    def build_gas(self):
+    def build_gas(self, particles):
         """todo."""
-        if self.gas_params is not None:
-            for key in list(self.gas_params.keys()):
-                self.gas[key] = self.gas_params[key][()]
-            self.gas_params = True
+        if particles is not None:
+            for key in list(particles.keys()):
+                self.gas[key] = particles[key][()]
+            # Gas temperature
+            if 'ElectronAbundance' in particles.keys():
+                self.gas['temp'] = compute_gas_temp(self.gas)
+        else:
+            self.gas = None
 
     def set_to_galaxy_rest_frame(self):
         """Set the position and velocity of gas and stellar particles to the galaxy rest frame."""
-        if self.stars_params is not None:
+        print("[Galaxy] Setting particles to galaxy rest-frame")
+        if not np.isfinite(self.position).all():
+            print(" [Galaxy] Incorrect galaxy position: ({} {} {})"
+                  .format(*self.position))
+            return
+        if not np.isfinite(self.velocity).all():
+            print(" [Galaxy] Incorrect galaxy velocity: ({} {} {})"
+                  .format(*self.velocity))
+            return
+
+        if self.stars is not None:
             self.stars['Velocities'] += -self.velocity[np.newaxis, :]
             self.stars['Coordinates'] += -self.position[np.newaxis, :]
-            print("Stellar particles in restframe")
-        if self.gas_params is not None:
+            print(" [Galaxy] Stellar particles in rest-frame")
+        if self.gas is not None:
             self.gas['Velocities'] += -self.velocity[np.newaxis, :]
             self.gas['Coordinates'] += -self.position[np.newaxis, :]
-            print("Gas particles in restframe")
+            print(" [Galaxy] Gas particles in rest-frame")
         self.velocity = np.zeros(3)
         self.position = np.zeros(3)
 
@@ -100,10 +116,10 @@ class Galaxy(object):
             Orthogonal vector to the projected plane.
         """
         if orthogonal_vector is None:
-            if self.stars_params is not None:
+            if self.stars is not None:
                 self.stars['ProjCoordinates'] = self.stars['Coordinates'].copy().T
                 self.stars['ProjVelocities'] = self.stars['Velocities'].copy().T
-            if self.gas_params is not None:
+            if self.gas is not None:
                 self.gas['ProjCoordinates'] = self.gas['Coordinates'].copy().T
                 self.gas['ProjVelocities'] = self.gas['Velocities'].copy().T
             self.proyection_vector = (None, None, None)
@@ -133,7 +149,7 @@ class Galaxy(object):
             # Change of basis matrix
             W = np.array([u, v, w])
             inv_W = np.linalg.inv(W)
-            if self.stars_params is not None:
+            if self.stars is not None:
                 self.stars['ProjCoordinates'] = np.array([
                     np.sum(self.stars['Coordinates'] * u[np.newaxis, :], axis=1),
                     np.sum(self.stars['Coordinates'] * v[np.newaxis, :], axis=1),
@@ -147,7 +163,7 @@ class Galaxy(object):
                     np.sum(self.stars['Velocities'] * inv_W[2, :][np.newaxis, :],
                            axis=1)
                     ])
-            if self.gas_params is not None:
+            if self.gas is not None:
                 self.gas['ProjCoordinates'] = np.array([
                     np.sum(self.gas['Coordinates'] * u[np.newaxis, :], axis=1),
                     np.sum(self.gas['Coordinates'] * v[np.newaxis, :], axis=1),
@@ -161,6 +177,36 @@ class Galaxy(object):
                     np.sum(self.gas['Velocities'] * inv_W[2, :][np.newaxis, :],
                            axis=1)
                     ])
+
+    def get_galaxy_pos(self, stars=True, gas=False):
+        pos = np.zeros((0, 3))
+        mass = np.zeros(0)
+        if stars:
+            if self.stars is not None:
+                pos = np.vstack((pos, self.stars['Coordinates']))
+                mass = np.hstack((mass, self.stars['Masses']))
+        if gas:
+            if self.gas is not None:
+                pos = np.vstack((pos, self.gas['Coordinates']))
+                mass = np.hstack((mass, self.gas['Masses']))
+        self.position = (
+            np.sum(pos * mass[:, np.newaxis], axis=0) / np.sum(mass))
+        print("[Galaxy] New galaxy position: ", self.position)
+    
+    def get_galaxy_vel(self, stars=True, gas=False):
+        vel = np.zeros((0, 3))
+        mass = np.zeros(0)
+        if stars:
+            if self.stars is not None:
+                vel = np.vstack((vel, self.stars['Velocities']))
+                mass = np.hstack((mass, self.stars['Masses']))
+        if gas:
+            if self.gas is not None:
+                vel = np.vstack((vel, self.gas['Velocities']))
+                mass = np.hstack((mass, self.gas['Masses']))
+        self.velocity = (
+            np.sum(vel * mass[:, np.newaxis], axis=0) / np.sum(mass))
+        print("[Galaxy] New galaxy velocity: ", self.velocity)
 
     def get_stellar_map(self, out, stat_val, statistic='sum'):
         """..."""
@@ -188,5 +234,19 @@ class Galaxy(object):
                         ) & (self.stars['ybin'] == oc_bin[1])
                 out[oc_bin[0], oc_bin[1]] = np.std(stat_val[mask])
         return out
+
+
+def compute_gas_temp(gas_file, gamma=1.6667):
+    """Compute the temperature of gas particles."""
+    m_proton = 1.67262192e-24  # grams
+    k_boltzmann = 1.38066e-16  # erg/K
+    u = gas_file['InternalEnergy'][()]
+    elec_ab = gas_file['ElectronAbundance'][()]
+    hyd_ab = gas_file['GFM_Metals'][()][:, 0]
+    mean_molec_weight = 4 * m_proton / (
+        1 + 3 * hyd_ab + 4 * hyd_ab * elec_ab)
+    temperature = (gamma - 1) * u / k_boltzmann * mean_molec_weight
+    temperature *= 1e10
+    return temperature
 
 # Mr Krtxo \(ﾟ▽ﾟ)/

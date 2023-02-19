@@ -63,7 +63,7 @@ class Observation(object):
             ssp_wave = self.SSP.wavelength
             mlr_mask = (ssp_wave > mass_to_light_wave[0]
                         ) & (ssp_wave > mass_to_light_wave[1])
-            n_part = self.galaxy.stars['count']
+            n_part = self.galaxy.stars['Masses'].size
 
             print(' [Observation] Computing stellar spectra for'
                   + ' {} star particles'.format(n_part))
@@ -139,7 +139,7 @@ class Observation(object):
                 # if part_i > 100:
                 #     break
         if gas:
-            n_part = self.galaxy.gas['count']
+            n_part = self.galaxy.gas['Masses'].size
 
             print(' [Observation] Computing gas spectra for'
                   + ' {} gas particles'.format(n_part))

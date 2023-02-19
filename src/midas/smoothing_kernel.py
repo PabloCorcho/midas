@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+#from numba import njit
 
 class CubicSplineKernel(object):
 
@@ -58,7 +58,7 @@ class GaussianKernel(object):
         self.kernel_params = {'sigma': sigma}
 
     @staticmethod
-    @njit
+    # @njit
     def kernel(r, sigma, mean=0, sigma_trunc=3):
         w = np.zeros(r.shape, dtype=np.float32)
         e = (r-mean)**2 / sigma**2

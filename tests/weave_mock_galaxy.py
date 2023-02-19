@@ -25,7 +25,7 @@ output = './test_output'
 # Create a Galaxy object
 # =============================================================================
 # Load galaxy data
-f = h5py.File('/test_output/sub_239995.hdf5', 'r)
+f = h5py.File('/test_output/sub_239995.hdf5', 'r')
 
 stars = f['stars']
 gas = f['gas']

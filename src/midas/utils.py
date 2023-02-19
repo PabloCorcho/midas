@@ -1,11 +1,11 @@
-from numba import njit
+#from numba import njit
 import numpy as np
 
-@njit
+#@njit
 def fast_vector_norm(x, y):
     return np.sqrt(x*x + y*y)
 
-@njit
+#@njit
 def fast_interpolation(f, dx, x, xnew, dxnew):
     cumulative = np.cumsum(f * dx)
     interpolation = np.interp(xnew, x, cumulative)

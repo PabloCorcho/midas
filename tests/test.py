@@ -24,19 +24,12 @@ output = './test_output'
 # Create a Galaxy object
 # =============================================================================
 # Load galaxy data
-gal_pos = {"pos_x": 17200.5,
-           "pos_y": 42088.9,
-           "pos_z": 37759.4}
-gal_vel = {"vel_x": -6.831,
-           "vel_y": -12.1726,
-           "vel_z": -83.3343}
 
-gal_redshift = 0.0138
+f = h5py.File('test_data/sub_98.hdf5', 'r')
+# f = h5py.File('/home/pablo/Research/WEAVE-Apertif/weave_sample/data/sub_626893.hdf5')
 
-f = h5py.File('test_data/sub_369366.hdf5', 'r')
-
-stars = f['stars']
-gas = f['gas']
+stars = f['PartType4']
+gas = f['PartType0']
 
 # Variables of each component
 print("Stellar particles: ", *stars.keys())
@@ -48,10 +41,12 @@ galaxy = Galaxy(
     name='test_galaxy',
     stars=stars,
     gas=gas,
-    gal_spin=np.array([0., 0., 0.]),
-    gal_vel=np.array([gal_vel['vel_x'], gal_vel['vel_y'], gal_vel['vel_z']]),
-    gal_pos=np.array([gal_pos['pos_x'], gal_pos['pos_y'], gal_pos['pos_z']])
+    # gal_spin=np.array([0., 0., 0.]),
+    # gal_vel=np.array([gal_vel['vel_x'], gal_vel['vel_y'], gal_vel['vel_z']]),
+    # gal_pos=np.array([gal_pos['pos_x'], gal_pos['pos_y'], gal_pos['pos_z']])
     )
+galaxy.get_galaxy_pos(stars=True, gas=False)
+galaxy.get_galaxy_vel(stars=True, gas=False)
 # Remove systemic velocity and recentre spatial coordinates
 galaxy.set_to_galaxy_rest_frame()
 # Call this function to generate the 2D projected coordinates
@@ -78,7 +73,7 @@ plt.colorbar(label=r'$\log_{10}(\Sigma_{\rm HI}/(\rm M_\odot/ pc^2))$')
 # =============================================================================
 # Create the WEAVE instrument for observing the galaxy
 # =============================================================================
-instrument = HI_Instrument(z=f['redshift_observation'][()])
+instrument = HI_Instrument(z=0.02)
 # %% # Perform observation
 observation = Observation(Instrument=instrument,
                           Galaxy=galaxy, SSP=None)
@@ -99,7 +94,7 @@ plt.contour(xbins, ybins, np.log10(mass_map.T) + 10, levels=4,
 plt.xlabel(r'$X$ [kpc]')
 plt.ylabel(r'$Y$ [kpc]')
 plt.savefig("hi_map.pdf", bbox_inches='tight')
-plt.close()
+# plt.close()
 
 plt.figure()
 plt.plot(instrument.wavelength / 1e8, cube.sum(axis=(1, 2)))
@@ -107,5 +102,5 @@ plt.plot(instrument.wavelength / 1e8, cube.sum(axis=(1, 2)))
 plt.xlabel(r'$\lambda~\rm [cm]$')
 plt.ylabel(r'$F_\lambda~ \rm [erg/s/\AA/cm^2]$')
 plt.savefig("hi_integrated_line_profile.pdf", bbox_inches='tight')
-plt.close()
-# f.close()
+# plt.close()
+f.close()
