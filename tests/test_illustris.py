@@ -23,8 +23,8 @@ from scipy.stats import binned_statistic_2d
 # Create a Galaxy object
 # =============================================================================
 
-path = '/home/pablo/Develop/MIDAS/tests/test_data/sub_20.hdf5'
-f = h5py.File(path)
+# path = '/home/pablo/Develop/MIDAS/tests/test_data/sub_20.hdf5'
+f = h5py.File('test_data/sub_20.hdf5', 'r')
 
 gal = Galaxy(stars=f['PartType4'], gas=f['PartType0'])
 gal.get_galaxy_pos(stars=True, gas=False)
@@ -34,7 +34,8 @@ gal.set_to_galaxy_rest_frame()
 plt.figure()
 plt.hist2d(np.log10(gal.gas['temp']),
            np.log10(gal.gas['Density']),
-           bins=30)
+           bins=30, vmin=0, vmax=100)
+plt.colorbar()
 plt.xlabel(r'$\log_{10}(\rm T / K)$')
 plt.ylabel(r'$\log_{10}(\rm \rho / [10^{10} M_\odot / (ckpc^3/h^3)])$')
 #

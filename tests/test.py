@@ -14,10 +14,9 @@ from midas.instrument import HI_Instrument
 from midas.galaxy import Galaxy
 
 import numpy as np
-from astropy.io import fits
-import os
-
 from scipy.stats import binned_statistic_2d
+from gas_model import Gas_model
+
 
 output = './test_output'
 # =============================================================================
@@ -25,7 +24,7 @@ output = './test_output'
 # =============================================================================
 # Load galaxy data
 
-f = h5py.File('test_data/sub_98.hdf5', 'r')
+f = h5py.File('test_data/sub_20.hdf5', 'r')
 # f = h5py.File('/home/pablo/Research/WEAVE-Apertif/weave_sample/data/sub_626893.hdf5')
 
 stars = f['PartType4']
@@ -75,6 +74,7 @@ plt.colorbar(label=r'$\log_{10}(\Sigma_{\rm HI}/(\rm M_\odot/ pc^2))$')
 # =============================================================================
 instrument = HI_Instrument(z=0.02)
 # %% # Perform observation
+
 observation = Observation(Instrument=instrument,
                           Galaxy=galaxy, SSP=None)
 
@@ -104,3 +104,22 @@ plt.ylabel(r'$F_\lambda~ \rm [erg/s/\AA/cm^2]$')
 plt.savefig("hi_integrated_line_profile.pdf", bbox_inches='tight')
 # plt.close()
 f.close()
+
+# %%
+
+model = Gas_model(galaxy)
+wavelength,gas_emission = model.get_spectra()
+
+plt.figure()
+plt.loglog(wavelength, gas_emission)
+plt.xlabel('wavelength ($\AA$)')
+plt.ylabel('$L_{\u03BB}$' '($erg \ s^{-1}$)')
+plt.ylim(1.0e35, 1.0e44)
+plt.xlim(10, 1e8)
+
+plt.figure()
+plt.loglog(wavelength, gas_emission)
+plt.xlabel('wavelength ($\AA$)')
+plt.ylabel('$L_{\u03BB}$' '($erg \ s^{-1}$)')
+plt.xlim(6.5e3, 6.65e3)
+plt.ylim(1.0e37, 1.0e44)
