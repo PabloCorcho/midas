@@ -15,7 +15,7 @@ from midas.galaxy import Galaxy
 
 import numpy as np
 from scipy.stats import binned_statistic_2d
-from gas_model import Gas_model
+from midas.models.gas_model import Gas_model
 
 
 output = './test_output'
