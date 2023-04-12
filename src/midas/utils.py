@@ -63,6 +63,12 @@ def gaussian1d_conv(f, sigma, deltax):
             f_convolved[pixel] = np.sum(f * g)
     return f_convolved
 
+def gaussian(x, a, m, s):
+    """Gaussian profile."""
+    i = a / np.sqrt(2 * np.pi) / s**2 * np.exp(- (x - m)**2 / s**2 / 2)
+    return i
+
+
 if __name__ == '__main__':
     from time import time
     import numpy as np

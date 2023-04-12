@@ -2,12 +2,16 @@ from abc import ABC, abstractmethod
 from midas.utils import gaussian1d_conv
 import numpy as np
 
-class EmissionGridModel(ABC):
-    """TODO..."""
+class EmissionModel(ABC):
+    """TODO"""
 
     @abstractmethod
     def get_spectra(self):
         raise NotImplementedError("Method not implemented on child class")
+
+
+class EmissionGridModel(EmissionModel):
+    """TODO..."""
     
     @abstractmethod
     def load_grid(self):
