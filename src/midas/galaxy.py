@@ -1,8 +1,5 @@
 import numpy as np
-import h5py
-from .smoothing_kernel import GaussianKernel
 from . import cosmology
-from matplotlib import pyplot as plt
 
 class Galaxy(object):
     """
@@ -35,7 +32,7 @@ class Galaxy(object):
     stars = {}
     gas = {}
 
-    def __init__(self, kernel=None, **kwargs):
+    def __init__(self, **kwargs):
 
         # Particles
         stellar_particles = kwargs.get('stars', None)
@@ -235,6 +232,18 @@ class Galaxy(object):
                 out[oc_bin[0], oc_bin[1]] = np.std(stat_val[mask])
         return out
 
+class TNG_Galaxy(Galaxy):
+    def __init__(self, h5py_file):
+        stars = h5py_file["PartType4"]
+        gas =  h5py_file["PartType0"]
+        super().__init__(stars=stars, gas=gas)
+
+class EAGLE_Galaxy(Galaxy):
+    def __init__(self, **kwargs):
+        raise NotImplementedError("Class not implemented")
+        ### Do stuff
+        #super().__init__(**kwargs)
+
 
 def compute_gas_temp(gas_file, gamma=1.6667):
     """Compute the temperature of gas particles."""
@@ -248,5 +257,6 @@ def compute_gas_temp(gas_file, gamma=1.6667):
     temperature = (gamma - 1) * u / k_boltzmann * mean_molec_weight
     temperature *= 1e10
     return temperature
+
 
 # Mr Krtxo \(ﾟ▽ﾟ)/
