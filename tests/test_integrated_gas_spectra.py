@@ -19,7 +19,7 @@ gas_model = Gas_model()
 gas_model.interpolate_sed(wavelength)
 
 # %%
-f = h5py.File('test_data/sub_20.hdf5', 'r')
+f = h5py.File('test_data/sub_72.hdf5', 'r')
 galaxy = TNG_Galaxy(f, name='test_galaxy')
 
 gas_spec = np.zeros_like(gas_model.wavelength)
@@ -64,8 +64,8 @@ plt.plot(gas_model.wavelength,
          c='b', label='Gas')
 plt.plot(ssp_model.wavelength, stellar_spec, c='r', label='Stellar')
 plt.plot(ssp_model.wavelength, tot_spec, c='k', label='Total')
-plt.legend(framealpha=0.7)
-plt.ylabel(r"$L_\lambda$")
+plt.legend(framealpha=0.7, ncol=3)
+plt.ylabel(r"$L_\lambda~(\rm L_\odot / \AA)$")
 # plt.xscale('log')
 plt.yscale('log')
 plt.ylim(gas_spec.max() * np.array([1e-5, 1.1]))
