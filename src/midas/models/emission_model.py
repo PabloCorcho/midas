@@ -20,7 +20,10 @@ class EmissionGridModel(ABC):
         else:
             self.wavelength = self.wavelength[mask]
             self.sed_grid = self.sed_grid[mask]
-    
+
+
+class BidimensionalGridMixin:
+
     def interpolate_sed(self, new_wl_edges):
         """Flux-conserving interpolation.
 
