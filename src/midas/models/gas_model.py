@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 import numpy as np
 from astropy import constants as const
 from midas.utils import inter_2d
@@ -23,7 +20,7 @@ class Gas_model(EmissionGridModel):
     h_densities = None
     temperatures = None
     metallicities = None
-    emission_coef = None
+    sed_grid = None
     wavelength = None
 
     def __init__(self):
@@ -33,12 +30,16 @@ class Gas_model(EmissionGridModel):
         """Here you should include the method that is able to read the files."""
         self.h_densities = np.logspace(-3, 3, num=7)
         self.temperatures = np.logspace(3, 7, num=9)
-        self.emission_coef = np.loadtxt('emission_coef.txt').reshape(7, 9, 8228)
-        self.wavelength = np.loadtxt('wavelength.txt')
+        self.sed_grid = (np.loadtxt('emission_coef.txt', dtype=float).reshape(7, 9, 8228).T
+                         / const.L_sun.to('erg/s').value)
+        # The wavelength axis is stored in decreasing order...
+        self.sed_grid = self.sed_grid[::-1, :, :]
+        self.wavelength = np.loadtxt('wavelength.txt')[::-1]
+        self.sed_grid /= self.wavelength[:, np.newaxis, np.newaxis]  # to Lsun/AA/Msun
 
-    def get_spectra(self, mass, h_density, temperature):
+    def get_spectra(self, mass, temperature, h_density):
         """This function should be able to interpolate the grid and return a spectra for
         a given set of parameters"""
-        gas_emission = inter_2d(self.emission_coef, self.h_densities, self.temperatures,
-                                h_density, temperature)
+        gas_emission = inter_2d(self.sed_grid, self.temperatures, self.h_densities,
+                                temperature, h_density)
         return gas_emission * mass
