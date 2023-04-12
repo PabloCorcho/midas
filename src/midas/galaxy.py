@@ -233,10 +233,10 @@ class Galaxy(object):
         return out
 
 class TNG_Galaxy(Galaxy):
-    def __init__(self, h5py_file):
+    def __init__(self, h5py_file, **kwargs):
         stars = h5py_file["PartType4"]
         gas =  h5py_file["PartType0"]
-        super().__init__(stars=stars, gas=gas)
+        super().__init__(stars=stars, gas=gas, **kwargs)
 
 class EAGLE_Galaxy(Galaxy):
     def __init__(self, **kwargs):
