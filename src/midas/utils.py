@@ -68,6 +68,33 @@ def gaussian(x, a, m, s):
     i = a / np.sqrt(2 * np.pi) / s**2 * np.exp(- (x - m)**2 / s**2 / 2)
     return i
 
+def gaussian1d_conv(f, sigma, deltax):
+    """Apply a gaussian convolution to a 1D array f(x).
+
+    params
+    ------
+    - f: (array) 1D array containing the data to be convolved with.
+    - sigma (array) 1D array containing the values of sigma at each value of x
+    - deltax: (float) Step size of x in "physical" units.
+    """
+    sigma_pixels = sigma / deltax
+    pix_range = np.arange(0, f.size, 1)
+    if len(pix_range) < 2e4:
+        XX = pix_range[:, np.newaxis] - pix_range[np.newaxis, :]
+        g = np.exp(- (XX)**2 / 2 / sigma_pixels[np.newaxis, :]**2) / (
+                   sigma_pixels[np.newaxis, :] * np.sqrt(2 * np.pi))
+        g /= g.sum(axis=1)[:, np.newaxis]
+        f_convolved = np.sum(f[np.newaxis, :] * g, axis=1)
+    else:
+        print(' WARNING: TOO LARGE ARRAY --- APPLYING SLOW CONVOLUTION METHOD ---')
+        f_convolved = np.zeros_like(f)
+        for pixel in pix_range:
+            XX = pixel - pix_range
+            g = np.exp(- (XX)**2 / 2 / sigma_pixels**2) / (
+                       sigma_pixels * np.sqrt(2 * np.pi))
+            g /= g.sum()
+            f_convolved[pixel] = np.sum(f * g)
+    return f_convolved
 
 if __name__ == '__main__':
     from time import time

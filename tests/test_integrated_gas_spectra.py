@@ -4,7 +4,7 @@ from astropy import constants as const
 import h5py
 
 from midas.models.gas_model import Gas_model
-from midas.models.ssp_model import PyPopStar_model
+from midas.models.ssp_model import PopStar_model, PyPopStar_model
 from midas.galaxy import Galaxy, TNG_Galaxy
 
 tng_density = 3.105e-22
@@ -12,7 +12,7 @@ h_cosmo = 0.7
 
 wavelength = np.logspace(3, 5.6, 1001)
 
-ssp_model = PyPopStar_model(IMF='KRO')
+ssp_model = PopStar_model(IMF='cha')
 ssp_model.interpolate_sed(wavelength)
 
 gas_model = Gas_model()
