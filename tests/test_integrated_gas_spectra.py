@@ -10,7 +10,7 @@ from midas.galaxy import Galaxy, TNG_Galaxy
 tng_density = 3.105e-22
 h_cosmo = 0.7
 
-wavelength = np.logspace(3, 4, 1001)
+wavelength = np.logspace(3, 5.6, 1001)
 
 ssp_model = PyPopStar_model(IMF='KRO')
 ssp_model.interpolate_sed(wavelength)
@@ -19,7 +19,7 @@ gas_model = Gas_model()
 gas_model.interpolate_sed(wavelength)
 
 # %%
-f = h5py.File('test_data/sub_72.hdf5', 'r')
+f = h5py.File('test_data/sub_20.hdf5', 'r')
 galaxy = TNG_Galaxy(f, name='test_galaxy')
 
 gas_spec = np.zeros_like(gas_model.wavelength)
@@ -69,7 +69,7 @@ plt.ylabel(r"$L_\lambda~(\rm L_\odot / \AA)$")
 # plt.xscale('log')
 plt.yscale('log')
 plt.ylim(gas_spec.max() * np.array([1e-5, 1.1]))
-plt.xlim(wavelength.min(), wavelength.max())
+plt.xlim(wavelength.min(), 4200)
 # plt.xlim(3500, 7000)
 plt.subplot(212)
 plt.plot(gas_model.wavelength, gas_spec / tot_spec, c='k')
@@ -83,3 +83,4 @@ plt.xlabel(r"$\lambda~(\AA)$")
 plt.ylabel(r"$L_\lambda^{\rm gas} / L_\lambda^{\rm tot}$")
 plt.grid(visible=True)
 plt.show()
+
