@@ -26,7 +26,7 @@ class EmissionGridModel(EmissionModel):
             self.sed_grid = self.sed_grid[mask]
 
 
-class BidimensionalGridMixin:
+class BidimensionalGridMixin(object):
 
     def interpolate_sed(self, new_wl_edges):
         """Flux-conserving interpolation.
@@ -62,14 +62,3 @@ class BidimensionalGridMixin:
                 self.sed_grid[:, i, j] = profile(self.sed_grid[:, i, j],
                                               **profile_params)
 
-    def get_mass_lum_ratio(self, wl_range):
-        """Compute the mass-to-light ratio within a giveng wavelength range."""
-        pts = np.where((self.wavelength >= wl_range[0]) &
-                       (self.wavelength <= wl_range[1]))[0]
-        self.mass_to_lum = np.empty((self.metallicities.size,
-                                     self.ages.size)
-                                    )
-        for i in range(self.metallicities.size):
-            for j in range(self.ages.size):
-                self.mass_to_lum[i, j] = 1/np.mean(
-                    self.sed_grid[pts, i, j])
