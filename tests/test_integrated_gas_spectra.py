@@ -10,7 +10,7 @@ from midas.galaxy import Galaxy, TNG_Galaxy
 tng_density = 3.105e-22
 h_cosmo = 0.7
 
-wavelength = np.logspace(3, 5.6, 1001)
+wavelength = np.logspace(2, 5.6, 1001)
 
 ssp_model = PopStar_model(IMF='cha')
 ssp_model.interpolate_sed(wavelength)
@@ -69,7 +69,7 @@ plt.ylabel(r"$L_\lambda~(\rm L_\odot / \AA)$")
 # plt.xscale('log')
 plt.yscale('log')
 plt.ylim(gas_spec.max() * np.array([1e-5, 1.1]))
-plt.xlim(wavelength.min(), 4200)
+plt.xlim(wavelength.min(), 6000)
 # plt.xlim(3500, 7000)
 plt.subplot(212)
 plt.plot(gas_model.wavelength, gas_spec / tot_spec, c='k')
