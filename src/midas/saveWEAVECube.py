@@ -22,7 +22,9 @@ No.    Name      Ver    Type      Cards   Dimensions   Format
   
 """
 
+
 class SaveWEAVECube(object):
+    """..."""
     # Path to cube template files
     header_templates_path = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
@@ -33,6 +35,7 @@ class SaveWEAVECube(object):
                        '<arm>_IVAR_NOSS', '<arm>_SENSFUNC', '<arm>_DATA_COLLAPSE3',
                        '<arm>_IVAR_COLLAPSE3']
     # Normalization value for flux
+
     def __init__(self, observation, filename, funit=1, data_size=np.float128):
         """
         observation: (object)
@@ -113,7 +116,7 @@ class SaveWEAVECube(object):
         """
         blue_cube = cube[self.observation.instrument.wave_blue_pos, :, :]
         red_cube = cube[self.observation.instrument.wave_red_pos, :, :]
-        return {'BLUE':blue_cube, 'RED':red_cube}
+        return {'BLUE': blue_cube, 'RED': red_cube}
 
     def load_header_templates(self):
         print(' [SAVING] Loading header templates from\n  --> ', self.header_templates_path)

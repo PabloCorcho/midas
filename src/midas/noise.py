@@ -36,7 +36,7 @@ def logf0_model(wl, A=2.17e-15, wl_0=6052., a=3.9, b=3.2):
 
 
 def noise_model(wave, flux):
-    """Return the expected SNR correspondinf to the input flux values."""
+    """Return the expected SNR corresponding to the input flux values."""
     logflux_0 = logf0_model(wave)
     logsigma_0 = logsigma0_model(wave)
     snr = snr_model(np.log10(flux), logflux_0, logsigma_0)

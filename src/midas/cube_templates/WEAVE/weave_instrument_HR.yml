@@ -1,0 +1,12 @@
+# Field of view in arcseconds
+fov: [88.0, 76.5]
+# Wavelength resolution (assumed to be the same for both arms)
+delta_wave: 0.5
+# Wavelength range covered by the instrument
+lambda_init: 4730.0
+lambda_end: 6950.0
+# Blue and red limits
+blue_npix: 1440
+red_npix: 2000
+# Pixel spatial size in arcsecs
+pixel_size: 1.0

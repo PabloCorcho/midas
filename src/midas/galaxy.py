@@ -1,9 +1,10 @@
 import numpy as np
 from . import cosmology
 
+
 class Galaxy(object):
     """
-    Def. This class represents a galaxy, containing different components such as stellar and gas particles.
+    Class representing a galaxy. It contains different components such as stellar and gas particles.
 
     Attributes
     ----------
@@ -48,7 +49,6 @@ class Galaxy(object):
                                    np.full(3, fill_value=np.nan))  # km/s
         self.position = kwargs.get('gal_pos',
                                    np.full(3, fill_value=np.nan))  # kpc
-
 
     def build_stars(self, particles):
         """todo."""

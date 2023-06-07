@@ -5,28 +5,29 @@ import numpy as np
 import yaml
 from midas import cosmology
 
+
 class Instrument(object):
     pass
+
 
 class IFU(Instrument):
     spectral_axis = True
     spatial_axis = True
 
 
-class WEAVE_Instrument(IFU):
+class WEAVEInstrument(IFU):
     """
     This class represents the WEAVE LIFU instrument.
     """
-    configfile = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        'cube_templates', 'WEAVE', 'weave_instrument.yml')
-    wl_lsf, lsf = np.loadtxt(os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        'cube_templates', 'WEAVE', 'weave_lsf'))
 
-    def __init__(self, **kwargs):
+    def __init__(self, mode='LR', **kwargs):
+        self.configfile = None
+        self.lsf = None
+        self.wl_lsf = None
+        # Load instrument parameters
+        self.load_config(mode=mode)
         print('-' * 50
-              + '\n [INSTRUMENT] Initialising instrument: WEAVE LIFU\n'
+              + '\n [INSTRUMENT] Initialising instrument: WEAVE LIFU (mode {})\n'.format(mode)
               + '-' * 50)
         print('\n [INSTRUMENT] Loading default parameters for WEAVE LIFU\n -- configfile: '
               + self.configfile)
@@ -51,7 +52,7 @@ class WEAVE_Instrument(IFU):
         self.wave_blue_pos = np.where(
             self.wavelength <= self.wavelength_blue[-1])[0]
         self.wavelength_red = np.arange(
-            self.wave_end - self.delta_wave * self.red_arm_npix, self.wave_end,
+            self.wave_end - self.delta_wave * self.red_arm_npix, self.wave_end + self.delta_wave,
             self.delta_wave) * u.angstrom
         self.wave_red_pos = np.where(self.wavelength >= self.wavelength_red[0])[0]
         self.wavelength_edges = np.arange(self.wave_init - self.delta_wave / 2,
@@ -80,6 +81,15 @@ class WEAVE_Instrument(IFU):
               + '\n  · Source redshift: {:.4f}'.format(self.redshift)
               + '\n  · Pixel physical size: {:.4f}'.format(self.pixel_size_kpc)
               )
+
+    def load_config(self, mode='LR'):
+        """Load basic instrument parameters from default files."""
+        self.configfile = os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)),
+                    'cube_templates', 'WEAVE', 'weave_instrument_{}.yml'.format(mode))
+        self.wl_lsf, self.lsf = np.loadtxt(os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            'cube_templates', 'WEAVE', 'weave_lsf_{}'.format(mode)))
 
     def detector_bins(self):
         """todo."""

@@ -135,6 +135,7 @@ class Observation(object):
                     self.instrument.wavelength_edges.value,
                     self.instrument.delta_wave)
                 # Cube storage ------------------------------------------------
+                print(self.cube.shape, sed.size)
                 self.cube[:, xbin, ybin] += sed
                 # if part_i > 100:
                 #     break
